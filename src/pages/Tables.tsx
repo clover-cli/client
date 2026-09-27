@@ -4,6 +4,7 @@ import { Button, Check, DataTable, Empty, ErrorBox, Field, PageHeader, Spinner, 
 import { cell, formatBytes } from '../lib/format';
 import { dynamodb, lines, type Item, type Table } from '../lib/clover';
 import { useCli } from '../lib/hooks';
+import { Plus, RotateCw, TableIcon, Trash2 } from 'lucide-react';
 
 /** "userId:S" -> "userId" */
 const keyName = (spec?: string) => spec?.split(':')[0];
@@ -142,18 +143,18 @@ function TableView({ name, onDeleted }: { name: string; onDeleted: () => void })
                         {[25, 100, 500, 1000].map((n) => <option key={n} value={n}>{n} rows</option>)}
                         <option value={0}>All rows</option>
                     </select>
-                    <Button icon="refresh" onClick={reload} busy={items.loading}>Refresh</Button>
-                    <Button variant="primary" icon="plus" onClick={() => setEditing('new')} disabled={!pk}>Insert row</Button>
-                    <Button variant="ghost" icon="trash" title="Delete table" onClick={() => setDeletingTable(true)} />
+                    <Button icon={RotateCw} onClick={reload} busy={items.loading}>Refresh</Button>
+                    <Button variant="primary" icon={Plus} onClick={() => setEditing('new')} disabled={!pk}>Insert row</Button>
+                    <Button variant="ghost" icon={Trash2} title="Delete table" onClick={() => setDeletingTable(true)} />
                 </div>
             </div>
 
             <ErrorBox error={meta.error ?? items.error} />
-            {items.data && items.data.length === 0 && <Empty icon="table" title="This table is empty">Insert a row to get started.</Empty>}
+            {items.data && items.data.length === 0 && <Empty icon={TableIcon} title="This table is empty">Insert a row to get started.</Empty>}
             {items.data && items.data.length > 0 && (
                 <DataTable columns={columns} rows={items.data} rowKey={(r) => JSON.stringify(keyOf(r))}
                     onRowClick={(r) => setEditing(r)}
-                    actions={(r) => <Button variant="ghost" icon="trash" title="Delete row" onClick={() => setDeleting(r)} />} />
+                    actions={(r) => <Button variant="ghost" icon={Trash2} title="Delete row" onClick={() => setDeleting(r)} />} />
             )}
             {!items.data && items.loading && <div className="center"><Spinner /></div>}
 
@@ -191,7 +192,7 @@ export default function Tables() {
         <div className="page page-split">
             <aside className="list-pane">
                 <PageHeader title="Table Editor" subtitle="DynamoDB" />
-                <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>New table</Button>
+                <Button variant="primary" icon={Plus} onClick={() => setCreating(true)}>New table</Button>
                 <ErrorBox error={tables.error} />
                 {tables.loading && !tables.data && <Spinner />}
                 <ul className="list">
@@ -205,9 +206,9 @@ export default function Tables() {
             {current ? (
                 <TableView key={current} name={current} onDeleted={() => { setSelected(undefined); tables.reload(); }} />
             ) : tables.data && (
-                <Empty icon="table" title="No tables yet">
+                <Empty icon={TableIcon} title="No tables yet">
                     <p className="muted">A DynamoDB table is a key-value store that scales to zero: no servers, pay per request.</p>
-                    <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>Create a table</Button>
+                    <Button variant="primary" icon={Plus} onClick={() => setCreating(true)}>Create a table</Button>
                 </Empty>
             )}
             {creating && <CreateTable onClose={() => setCreating(false)} onDone={(n) => { setSelected(n); tables.reload(); }} />}

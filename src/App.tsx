@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import type { CliActivity, CliInfo, Session } from '../shared/types';
-import { Icon, type IconName } from './components/Icon';
 import { Button, Spinner } from './components/ui';
 import { REGIONS } from './lib/clover';
 import Activity from './pages/Activity';
@@ -12,16 +11,17 @@ import Overview from './pages/Overview';
 import Permissions from './pages/Permissions';
 import Storage from './pages/Storage';
 import Tables from './pages/Tables';
+import { Archive, Database, House, Key, Leaf, LogOut, Server, Table, Terminal, Zap, type LucideIcon } from 'lucide-react';
 
 export type Page = 'overview' | 'tables' | 'storage' | 'functions' | 'databases' | 'compute' | 'permissions' | 'activity';
 
-const NAV: { page: Page; label: string; icon: IconName; service?: string }[] = [
-    { page: 'overview', label: 'Overview', icon: 'home' },
-    { page: 'tables', label: 'Table Editor', icon: 'table', service: 'DynamoDB' },
-    { page: 'storage', label: 'Storage', icon: 'bucket', service: 'S3' },
-    { page: 'functions', label: 'Functions', icon: 'function', service: 'Lambda' },
-    { page: 'databases', label: 'Databases', icon: 'database', service: 'RDS' },
-    { page: 'compute', label: 'Compute', icon: 'server', service: 'EC2' },
+const NAV: { page: Page; label: string; icon: LucideIcon; service?: string }[] = [
+    { page: 'overview', label: 'Overview', icon: House },
+    { page: 'tables', label: 'Table Editor', icon: Table, service: 'DynamoDB' },
+    { page: 'storage', label: 'Storage', icon: Archive, service: 'S3' },
+    { page: 'functions', label: 'Functions', icon: Zap, service: 'Lambda' },
+    { page: 'databases', label: 'Databases', icon: Database, service: 'RDS' },
+    { page: 'compute', label: 'Compute', icon: Server, service: 'EC2' },
 ];
 
 export default function App() {
@@ -72,13 +72,13 @@ export default function App() {
         <div className="app">
             <aside className="sidebar">
                 <div className="brand">
-                    <span className="brand-mark"><Icon name="leaf" size={18} /></span>
+                    <span className="brand-mark"><Leaf size={18} /></span>
                     <span>Clover</span>
                 </div>
                 <nav>
                     {NAV.map((item) => (
                         <button key={item.page} className={`nav-item ${page === item.page ? 'active' : ''}`} onClick={() => setPage(item.page)}>
-                            <Icon name={item.icon} />
+                            <item.icon size={16} />
                             <span>{item.label}</span>
                             {item.service && <small>{item.service}</small>}
                         </button>
@@ -86,12 +86,12 @@ export default function App() {
                 </nav>
                 <div className="sidebar-bottom">
                     <button className={`nav-item ${page === 'permissions' ? 'active' : ''}`} onClick={() => setPage('permissions')}>
-                        <Icon name="key" />
+                        <Key size={16} />
                         <span>Permissions</span>
                         <small>IAM</small>
                     </button>
                     <button className={`nav-item ${page === 'activity' ? 'active' : ''}`} onClick={() => setPage('activity')}>
-                        <Icon name="terminal" />
+                        <Terminal size={16} />
                         <span>Activity</span>
                         {runningCount > 0 && <span className="pill">{runningCount}</span>}
                     </button>
@@ -116,7 +116,7 @@ export default function App() {
                                 {(REGIONS.includes(identity.region) ? REGIONS : [identity.region, ...REGIONS]).map((r) => <option key={r}>{r}</option>)}
                             </select>
                         </label>
-                        <Button variant="ghost" icon="logout" title={`Forget the credentials (${session.accessKeyHint}), like clover aws logout`}
+                        <Button variant="ghost" icon={LogOut} title={`Forget the credentials (${session.accessKeyHint}), like clover aws logout`}
                             onClick={() => void window.clover.session.disconnect().then(setSession)}>
                             Disconnect
                         </Button>

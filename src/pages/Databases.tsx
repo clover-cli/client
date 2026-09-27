@@ -3,6 +3,7 @@ import { ActionModal } from '../components/ActionModal';
 import { Button, Check, CopyButton, DataTable, Empty, ErrorBox, Field, KeyValues, Modal, PageHeader, Spinner, Status } from '../components/ui';
 import { lines, rds, type Cmd, type Database } from '../lib/clover';
 import { useCli } from '../lib/hooks';
+import { DatabaseIcon, Play, Plus, RefreshCw, RotateCw, Square, Trash2 } from 'lucide-react';
 
 const ENGINES = ['postgres', 'mysql', 'mariadb'];
 const CLASSES = ['db.t3.micro', 'db.t3.small', 'db.t3.medium', 'db.t4g.micro', 'db.t4g.small', 'db.t4g.medium'];
@@ -102,12 +103,12 @@ export default function Databases() {
         <div className="page">
             <PageHeader title="Databases" subtitle="RDS: managed Postgres, MySQL and MariaDB"
                 actions={<>
-                    <Button icon="refresh" onClick={dbs.reload} busy={dbs.loading}>Refresh</Button>
-                    <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>New database</Button>
+                    <Button icon={RotateCw} onClick={dbs.reload} busy={dbs.loading}>Refresh</Button>
+                    <Button variant="primary" icon={Plus} onClick={() => setCreating(true)}>New database</Button>
                 </>} />
             <ErrorBox error={dbs.error} />
             {dbs.loading && !dbs.data && <Spinner />}
-            {dbs.data?.length === 0 && <Empty icon="database" title="No databases yet">A Postgres database is one form away.</Empty>}
+            {dbs.data?.length === 0 && <Empty icon={DatabaseIcon} title="No databases yet">A Postgres database is one form away.</Empty>}
             {!!dbs.data?.length && (
                 <DataTable rows={dbs.data} rowKey={(d) => d.id} onRowClick={(d) => setDetails(d.id)} columns={[
                     { key: 'id', label: 'Identifier' },
@@ -118,10 +119,10 @@ export default function Databases() {
                 ]} actions={(d) => (
                     <span className="row">
                         {d.status === 'stopped'
-                            ? <Button variant="ghost" icon="play" title="Start" onClick={() => setPower({ action: 'start', id: d.id })} />
-                            : <Button variant="ghost" icon="stop" title="Stop" onClick={() => setPower({ action: 'stop', id: d.id })} />}
-                        <Button variant="ghost" icon="rotate" title="Reboot" onClick={() => setPower({ action: 'reboot', id: d.id })} />
-                        <Button variant="ghost" icon="trash" title="Delete" onClick={() => { setSnapshot(''); setForce(false); setDeleting(d); }} />
+                            ? <Button variant="ghost" icon={Play} title="Start" onClick={() => setPower({ action: 'start', id: d.id })} />
+                            : <Button variant="ghost" icon={Square} title="Stop" onClick={() => setPower({ action: 'stop', id: d.id })} />}
+                        <Button variant="ghost" icon={RefreshCw} title="Reboot" onClick={() => setPower({ action: 'reboot', id: d.id })} />
+                        <Button variant="ghost" icon={Trash2} title="Delete" onClick={() => { setSnapshot(''); setForce(false); setDeleting(d); }} />
                     </span>
                 )} />
             )}

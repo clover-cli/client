@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { ActionModal } from '../components/ActionModal';
-import { Icon } from '../components/Icon';
 import { Button, Check, DataTable, Empty, ErrorBox, Field, KeyValues, Modal, PageHeader, Spinner } from '../components/ui';
 import { formatBytes, formatDate } from '../lib/format';
 import { REGIONS, lines, runRaw, s3, type Bucket, type S3Object } from '../lib/clover';
 import { useCli } from '../lib/hooks';
+import { Archive, Download, File, Folder, Pencil, Plus, RefreshCw, RotateCw, Trash2, UploadIcon } from 'lucide-react';
 
 const LIMIT = 1000;
 
@@ -62,7 +62,7 @@ function BucketSettings({ name, onClose }: { name: string; onClose: () => void }
             {bucket.loading && !bucket.data && <Spinner />}
             {bucket.data && <KeyValues value={bucket.data} />}
             {bucket.data && (
-                <Button icon="rotate" onClick={() => setToggling(true)}>{enabled ? 'Suspend versioning' : 'Enable versioning'}</Button>
+                <Button icon={RefreshCw} onClick={() => setToggling(true)}>{enabled ? 'Suspend versioning' : 'Enable versioning'}</Button>
             )}
             {toggling && (
                 <ActionModal title={enabled ? 'Suspend versioning' : 'Enable versioning'} submitLabel="Apply"
@@ -115,34 +115,34 @@ function BucketView({ name, onDeleted }: { name: string; onDeleted: () => void }
         <div className="pane">
             <div className="pane-head">
                 <div className="crumbs">
-                    <button onClick={() => setPrefix('')}><Icon name="bucket" /> {name}</button>
+                    <button onClick={() => setPrefix('')}><Archive size={16} /> {name}</button>
                     {crumbs.map((c, i) => (
                         <span key={i}>/<button onClick={() => setPrefix(crumbs.slice(0, i + 1).join('/') + '/')}>{c}</button></span>
                     ))}
                 </div>
                 <div className="row">
-                    <Button icon="refresh" onClick={objects.reload} busy={objects.loading}>Refresh</Button>
-                    <Button variant="primary" icon="upload" onClick={() => void pickUpload()}>Upload</Button>
-                    <Button variant="ghost" icon="edit" title="Bucket settings" onClick={() => setSettings(true)} />
-                    <Button variant="ghost" icon="trash" title="Delete bucket" onClick={() => setDeletingBucket(true)} />
+                    <Button icon={RotateCw} onClick={objects.reload} busy={objects.loading}>Refresh</Button>
+                    <Button variant="primary" icon={UploadIcon} onClick={() => void pickUpload()}>Upload</Button>
+                    <Button variant="ghost" icon={Pencil} title="Bucket settings" onClick={() => setSettings(true)} />
+                    <Button variant="ghost" icon={Trash2} title="Delete bucket" onClick={() => setDeletingBucket(true)} />
                 </div>
             </div>
 
             <ErrorBox error={objects.error} />
             {notice && <p className="notice" onClick={() => setNotice(undefined)}>{notice}</p>}
-            {objects.data && rows.length === 0 && <Empty icon="folder" title={prefix ? 'Empty folder' : 'This bucket is empty'}>Upload a file to get started.</Empty>}
+            {objects.data && rows.length === 0 && <Empty icon={Folder} title={prefix ? 'Empty folder' : 'This bucket is empty'}>Upload a file to get started.</Empty>}
             {rows.length > 0 && (
                 <DataTable rows={rows} rowKey={(r) => r.key}
                     onRowClick={(r) => { if (r.folder) setPrefix(r.key); }}
                     columns={[
-                        { key: 'key', label: 'Name', render: (r) => <span className="row"><Icon name={r.folder ? 'folder' : 'file'} /> {r.key.slice(prefix.length)}</span> },
+                        { key: 'key', label: 'Name', render: (r) => <span className="row">{r.folder ? <Folder size={16} /> : <File size={16} />} {r.key.slice(prefix.length)}</span> },
                         { key: 'size', label: 'Size', width: '110px', render: (r) => r.folder ? '' : formatBytes(r.size) },
                         { key: 'modified', label: 'Last modified', width: '200px', render: (r) => r.folder ? '' : formatDate(r.modified) },
                     ]}
                     actions={(r) => r.folder ? null : (
                         <span className="row">
-                            <Button variant="ghost" icon="download" title="Download" onClick={() => void download(r.key)} />
-                            <Button variant="ghost" icon="trash" title="Delete" onClick={() => setDeleting(r.key)} />
+                            <Button variant="ghost" icon={Download} title="Download" onClick={() => void download(r.key)} />
+                            <Button variant="ghost" icon={Trash2} title="Delete" onClick={() => setDeleting(r.key)} />
                         </span>
                     )} />
             )}
@@ -177,7 +177,7 @@ export default function Storage() {
         <div className="page page-split">
             <aside className="list-pane">
                 <PageHeader title="Storage" subtitle="S3 buckets (all regions)" />
-                <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>New bucket</Button>
+                <Button variant="primary" icon={Plus} onClick={() => setCreating(true)}>New bucket</Button>
                 <ErrorBox error={buckets.error} />
                 {buckets.loading && !buckets.data && <Spinner />}
                 <ul className="list">
@@ -194,9 +194,9 @@ export default function Storage() {
             {current ? (
                 <BucketView key={current} name={current} onDeleted={() => { setSelected(undefined); buckets.reload(); }} />
             ) : buckets.data && (
-                <Empty icon="bucket" title="No buckets yet">
+                <Empty icon={Archive} title="No buckets yet">
                     <p className="muted">Buckets hold files: uploads, images, static sites, backups.</p>
-                    <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>Create a bucket</Button>
+                    <Button variant="primary" icon={Plus} onClick={() => setCreating(true)}>Create a bucket</Button>
                 </Empty>
             )}
             {creating && <CreateBucket onClose={() => setCreating(false)} onDone={(n) => { setSelected(n); buckets.reload(); }} />}

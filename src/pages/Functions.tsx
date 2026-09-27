@@ -4,6 +4,7 @@ import { Button, Check, CommandPreview, DataTable, Empty, ErrorBox, Field, KeyVa
 import { formatDate } from '../lib/format';
 import { lambda, lines, runRaw, type InvokeResult, type LambdaFunction } from '../lib/clover';
 import { useCli } from '../lib/hooks';
+import { Play, Plus, RotateCw, Trash2, Upload, Zap } from 'lucide-react';
 
 const RUNTIMES = ['nodejs22.x', 'nodejs20.x', 'python3.13', 'python3.12', 'java21', 'dotnet8', 'ruby3.3', 'provided.al2023'];
 
@@ -113,7 +114,7 @@ function Invoke({ name }: { name: string }) {
             </Field>
             <div className="row spread">
                 <Check label="Include logs" checked={logs} onChange={setLogs} />
-                <Button variant="primary" icon="play" busy={busy} disabled={!valid} onClick={() => void invoke()}>Invoke</Button>
+                <Button variant="primary" icon={Play} busy={busy} disabled={!valid} onClick={() => void invoke()}>Invoke</Button>
             </div>
             <CommandPreview cmd={cmd} />
             <ErrorBox error={error} />
@@ -140,9 +141,9 @@ function FunctionView({ name, onDeleted }: { name: string; onDeleted: () => void
                     {fn.data && <p className="muted small"><Status value={fn.data.state} /> · {fn.data.runtime} · {fn.data.memoryMb} MB · {fn.data.timeoutSec}s</p>}
                 </div>
                 <div className="row">
-                    <Button icon="refresh" onClick={fn.reload} busy={fn.loading}>Refresh</Button>
-                    <Button variant="primary" icon="upload" onClick={() => setDeploying(true)} disabled={!fn.data}>Update</Button>
-                    <Button variant="ghost" icon="trash" title="Delete function" onClick={() => setDeleting(true)} />
+                    <Button icon={RotateCw} onClick={fn.reload} busy={fn.loading}>Refresh</Button>
+                    <Button variant="primary" icon={Upload} onClick={() => setDeploying(true)} disabled={!fn.data}>Update</Button>
+                    <Button variant="ghost" icon={Trash2} title="Delete function" onClick={() => setDeleting(true)} />
                 </div>
             </div>
             <ErrorBox error={fn.error} />
@@ -188,12 +189,12 @@ export default function Functions() {
         <div className="page">
             <PageHeader title="Functions" subtitle="Lambda: code that runs on demand, billed per request"
                 actions={<>
-                    <Button icon="refresh" onClick={fns.reload} busy={fns.loading}>Refresh</Button>
-                    <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>New function</Button>
+                    <Button icon={RotateCw} onClick={fns.reload} busy={fns.loading}>Refresh</Button>
+                    <Button variant="primary" icon={Plus} onClick={() => setCreating(true)}>New function</Button>
                 </>} />
             <ErrorBox error={fns.error} />
             {fns.loading && !fns.data && <Spinner />}
-            {fns.data?.length === 0 && <Empty icon="function" title="No functions yet">Deploy a file or folder as a function in one step.</Empty>}
+            {fns.data?.length === 0 && <Empty icon={Zap} title="No functions yet">Deploy a file or folder as a function in one step.</Empty>}
             {!!fns.data?.length && (
                 <DataTable rows={fns.data} rowKey={(f) => f.name} onRowClick={(f) => setSelected(f.name)} columns={[
                     { key: 'name', label: 'Name' },

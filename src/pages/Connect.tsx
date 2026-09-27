@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import type { CliInfo, Session } from '../../shared/types';
-import { Icon } from '../components/Icon';
 import { Button, ErrorBox, Field } from '../components/ui';
 import { REGIONS } from '../lib/clover';
+import { Check, Leaf } from 'lucide-react';
 
 /**
  * Connect with an AWS access key. This is `eval "$(clover aws login)"` for the app: the keys are
@@ -34,7 +34,7 @@ export default function Connect({ cli, onConnected }: { cli?: CliInfo; onConnect
         <div className="connect">
             <div className="connect-card">
                 <div className="brand brand-large">
-                    <span className="brand-mark"><Icon name="leaf" size={22} /></span>
+                    <span className="brand-mark"><Leaf size={22} /></span>
                     <span>Clover</span>
                 </div>
                 <p className="muted">
@@ -79,7 +79,7 @@ export default function Connect({ cli, onConnected }: { cli?: CliInfo; onConnect
                 </div>
 
                 <div className="cli-status">
-                    {cli?.version && <><Icon name="check" size={14} /> clover-cli {cli.version} <span className="muted">· {cli.location}</span></>}
+                    {cli?.version && <><Check size={14} /> clover-cli {cli.version} <span className="muted">· {cli.location}</span></>}
                     {cli?.error && <ErrorBox error={`The clover CLI could not be run (${cli.location}):\n${cli.error}`} />}
                 </div>
             </div>

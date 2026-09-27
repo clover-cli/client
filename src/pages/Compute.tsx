@@ -3,6 +3,7 @@ import { ActionModal } from '../components/ActionModal';
 import { Button, Check, DataTable, Empty, ErrorBox, Field, KeyValues, Modal, PageHeader, Spinner, Status } from '../components/ui';
 import { ec2, lines, type Instance } from '../lib/clover';
 import { useCli } from '../lib/hooks';
+import { Play, Plus, RefreshCw, RotateCw, Server, Square, Trash2 } from 'lucide-react';
 
 /** The CLI's image aliases, resolved to the latest AMI in the region. */
 const IMAGES = ['al2023', 'al2023-arm64', 'ubuntu-24.04', 'ubuntu-24.04-arm64'];
@@ -67,12 +68,12 @@ export default function Compute() {
         <div className="page">
             <PageHeader title="Compute" subtitle="EC2: virtual servers"
                 actions={<>
-                    <Button icon="refresh" onClick={instances.reload} busy={instances.loading}>Refresh</Button>
-                    <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>New instance</Button>
+                    <Button icon={RotateCw} onClick={instances.reload} busy={instances.loading}>Refresh</Button>
+                    <Button variant="primary" icon={Plus} onClick={() => setCreating(true)}>New instance</Button>
                 </>} />
             <ErrorBox error={instances.error} />
             {instances.loading && !instances.data && <Spinner />}
-            {instances.data?.length === 0 && <Empty icon="server" title="No instances">Launch a server with a startup script in one step.</Empty>}
+            {instances.data?.length === 0 && <Empty icon={Server} title="No instances">Launch a server with a startup script in one step.</Empty>}
             {!!instances.data?.length && (
                 <DataTable rows={instances.data} rowKey={(i) => i.id} onRowClick={setDetails} columns={[
                     { key: 'name', label: 'Name' },
@@ -84,10 +85,10 @@ export default function Compute() {
                 ]} actions={(i) => i.state === 'terminated' ? null : (
                     <span className="row">
                         {i.state === 'stopped'
-                            ? <Button variant="ghost" icon="play" title="Start" onClick={() => setPower({ action: 'start', id: i.id })} />
-                            : <Button variant="ghost" icon="stop" title="Stop" onClick={() => setPower({ action: 'stop', id: i.id })} />}
-                        <Button variant="ghost" icon="rotate" title="Reboot" onClick={() => setPower({ action: 'reboot', id: i.id })} />
-                        <Button variant="ghost" icon="trash" title="Terminate" onClick={() => { setForce(false); setDeleting(i); }} />
+                            ? <Button variant="ghost" icon={Play} title="Start" onClick={() => setPower({ action: 'start', id: i.id })} />
+                            : <Button variant="ghost" icon={Square} title="Stop" onClick={() => setPower({ action: 'stop', id: i.id })} />}
+                        <Button variant="ghost" icon={RefreshCw} title="Reboot" onClick={() => setPower({ action: 'reboot', id: i.id })} />
+                        <Button variant="ghost" icon={Trash2} title="Terminate" onClick={() => { setForce(false); setDeleting(i); }} />
                     </span>
                 )} />
             )}

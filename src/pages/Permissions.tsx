@@ -1,8 +1,8 @@
 import type { Session } from '../../shared/types';
-import { Icon } from '../components/Icon';
 import { Button, CommandPreview, DataTable, ErrorBox, PageHeader, Spinner } from '../components/ui';
 import { iam, type AttachedPolicy, type CommandCheck } from '../lib/clover';
 import { useCli } from '../lib/hooks';
+import { Check, Key, RotateCw, X } from 'lucide-react';
 
 const SERVICE_NAMES: Record<string, string> = {
     dynamodb: 'Table Editor · DynamoDB',
@@ -60,7 +60,7 @@ function ServiceChecks({ service, checks }: { service: string; checks: CommandCh
                 {checks.map((c) => (
                     <li key={c.command} title={c.actions.join('\n')}>
                         <span className={c.allowed ? 'status-good' : 'status-bad'}>
-                            <Icon name={c.allowed ? 'check' : 'close'} size={14} />
+                            {c.allowed ? <Check size={14} /> : <X size={14} />}
                         </span>
                         <code>{c.command}</code>
                         {!c.allowed && <span className="missing">needs {c.missing.join(', ')}</span>}
@@ -85,8 +85,8 @@ export default function Permissions({ session }: { session: Session }) {
                 title="Permissions"
                 subtitle={<>What <code>{session.identity?.arn.split(':').pop()}</code> can do. Permissions are changed in IAM, not here.</>}
                 actions={<>
-                    <Button icon="refresh" busy={policies.loading || checks.loading} onClick={() => { policies.reload(); checks.reload(); }}>Refresh</Button>
-                    {url && <a className="btn btn-default" href={url} target="_blank" rel="noreferrer"><Icon name="key" /> Open in IAM console</a>}
+                    <Button icon={RotateCw} busy={policies.loading || checks.loading} onClick={() => { policies.reload(); checks.reload(); }}>Refresh</Button>
+                    {url && <a className="btn btn-default" href={url} target="_blank" rel="noreferrer"><Key size={16} /> Open in IAM console</a>}
                 </>}
             />
 

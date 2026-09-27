@@ -1,16 +1,16 @@
 import { useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { formatCommand } from '../../shared/format';
 import { cell } from '../lib/format';
-import { Icon, type IconName } from './Icon';
+import { CheckIcon, Copy, Terminal, X, type LucideIcon } from 'lucide-react';
 
-export function Button({ variant = 'default', icon, children, busy, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & {
+export function Button({ variant = 'default', icon: Icon, children, busy, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & {
     variant?: 'primary' | 'default' | 'danger' | 'ghost';
-    icon?: IconName;
+    icon?: LucideIcon;
     busy?: boolean;
 }) {
     return (
         <button type="button" {...props} className={`btn btn-${variant} ${props.className ?? ''}`} disabled={props.disabled || busy}>
-            {busy ? <Spinner /> : icon && <Icon name={icon} />}
+            {busy ? <Spinner /> : Icon && <Icon size={16} />}
             {children}
         </button>
     );
@@ -59,10 +59,10 @@ export function ErrorBox({ error }: { error?: string }) {
     return <pre className="error-box">{error}</pre>;
 }
 
-export function Empty({ icon, title, children }: { icon: IconName; title: string; children?: ReactNode }) {
+export function Empty({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children?: ReactNode }) {
     return (
         <div className="empty">
-            <Icon name={icon} size={28} />
+            <Icon size={28} />
             <h3>{title}</h3>
             {children}
         </div>
@@ -82,7 +82,7 @@ export function Status({ value }: { value?: string }) {
 export function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
     const [copied, setCopied] = useState(false);
     return (
-        <Button variant="ghost" icon={copied ? 'check' : 'copy'} title="Copy to clipboard" onClick={() => {
+        <Button variant="ghost" icon={copied ? CheckIcon : Copy} title="Copy to clipboard" onClick={() => {
             void navigator.clipboard.writeText(text).then(() => {
                 setCopied(true);
                 setTimeout(() => setCopied(false), 1200);
@@ -97,7 +97,7 @@ export function CommandPreview({ cmd }: { cmd: string[] }) {
     return (
         <div className="command">
             <div className="command-head">
-                <span><Icon name="terminal" size={14} /> Equivalent CLI command</span>
+                <span><Terminal size={14} /> Equivalent CLI command</span>
                 <CopyButton text={text} />
             </div>
             <code>{text}</code>
@@ -113,7 +113,7 @@ export function Modal({ title, onClose, children, footer, wide }: {
             <div className={`modal ${wide ? 'modal-wide' : ''}`} role="dialog" aria-label={title}>
                 <header className="modal-head">
                     <h2>{title}</h2>
-                    <Button variant="ghost" icon="close" onClick={onClose} aria-label="Close" />
+                    <Button variant="ghost" icon={X} onClick={onClose} aria-label="Close" />
                 </header>
                 <div className="modal-body">{children}</div>
                 {footer && <footer className="modal-foot">{footer}</footer>}
