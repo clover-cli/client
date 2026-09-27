@@ -1,0 +1,34 @@
+{
+  "name": "clover-client",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Desktop client for the clover CLI: a Supabase-style UI over your own AWS account",
+  "type": "module",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "start": "electron .",
+    "lint": "oxlint",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@clover-cli/cli": "file:../cli",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "electron": "^44.4.5",
+    "oxlint": "^1.81.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0",
+    "vite-plugin-electron": "^1.1.2"
+  },
+  "allowScripts": {
+    "electron@44.4.5": true
+  }
+}

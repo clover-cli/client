@@ -1,0 +1,170 @@
+import type { CliResult } from '../../shared/types';
+
+/**
+ * Every action in the client is one clover CLI command. The builders here return the command's
+ * arguments (without `--output json`, which `run` adds), so the UI can show and copy the exact
+ * command you would type in a terminal to do the same thing.
+ *
+ * Option names are the CLI's own (kebab-case), so each builder maps 1:1 to `clover aws ... --help`.
+ */
+
+export type Cmd = string[];
+
+type FlagValue = string | number | boolean | undefined | null | readonly (string | number)[];
+
+/**
+ * { versioning: true, tags: ['env=dev'], limit: 10 } -> ['--versioning', '--tags', 'env=dev', '--limit', '10']
+ * true -> --flag, false -> --no-flag, undefined/null/'' -> omitted, arrays repeat the flag.
+ */
+export function flags(options: Record<string, FlagValue>): string[] {
+    const out: string[] = [];
+    for (const [name, value] of Object.entries(options)) {
+        if (value === undefined || value === null || value === '') continue;
+        if (value === true) out.push(`--${name}`);
+        else if (value === false) out.push(`--no-${name}`);
+        else if (Array.isArray(value)) for (const v of value) out.push(`--${name}`, String(v));
+        else out.push(`--${name}`, String(value));
+    }
+    return out;
+}
+
+/** "a=b\nc=d" (one per line, blank lines ignored) -> ['a=b', 'c=d'] */
+export function lines(text: string): string[] {
+    return text.split('\n').map((l) => l.trim()).filter(Boolean);
+}
+
+export class CliError extends Error {
+    readonly result: CliResult;
+    constructor(result: CliResult) {
+        const lastLines = result.stderr.trim().split('\n').slice(-3).join('\n');
+        super(lastLines || `${result.command} exited with code ${result.code}`);
+        this.result = result;
+    }
+}
+
+/** Runs a command and returns the raw result, whatever the exit code. */
+export function runRaw(cmd: Cmd, { json = true } = {}): Promise<CliResult> {
+    return window.clover.cli.run(json ? [...cmd, '--output', 'json'] : cmd);
+}
+
+/** Runs a command with `--output json` and returns what it printed, parsed. Throws CliError on failure. */
+export async function run<T = unknown>(cmd: Cmd): Promise<T> {
+    const result = await runRaw(cmd);
+    if (result.code !== 0) throw new CliError(result);
+    return result.json as T;
+}
+
+// ---- What the CLI prints with --output json (the *Summary types in the CLI's src/provider/aws-services) ----
+
+export type Tags = Record<string, string>;
+
+export interface Bucket { name: string; region?: string; versioning?: string; created?: string; tags?: Tags }
+export interface S3Object { key: string; size?: number; modified?: string }
+
+export interface Table {
+    name: string; status?: string; partitionKey?: string; sortKey?: string; billing?: string;
+    readCapacity?: number; writeCapacity?: number; items?: number; sizeBytes?: number;
+    deletionProtection?: boolean; ttlAttribute?: string; arn?: string;
+}
+export type Item = Record<string, unknown>;
+
+export interface Database {
+    id: string; engine?: string; version?: string; class?: string; status?: string; storageGb?: number;
+    endpoint?: string; port?: number; username?: string; database?: string; multiAz?: boolean;
+    public?: boolean; deletionProtection?: boolean; passwordSecret?: string; arn?: string;
+}
+
+export interface LambdaFunction {
+    name: string; runtime?: string; handler?: string; memoryMb?: number; timeoutSec?: number;
+    architecture?: string; state?: string; lastUpdate?: string; modified?: string; role?: string;
+    environment?: Record<string, string>; arn?: string;
+}
+export interface InvokeResult { statusCode?: number; error?: string; payload: unknown; logs?: string }
+
+export interface Instance {
+    id: string; name?: string; type?: string; state?: string; az?: string; publicIp?: string;
+    privateIp?: string; imageId?: string; keyName?: string; launched?: string; tags?: Tags;
+}
+
+// ---- Commands ----
+
+/** Deletes are confirmed in the app, then run with --yes (the CLI requires it without a terminal). */
+const YES = '--yes';
+
+export const s3 = {
+    list: (): Cmd => ['aws', 's3', 'list'],
+    get: (bucket: string): Cmd => ['aws', 's3', 'get', bucket],
+    create: (bucket: string, o: { region?: string; versioning?: boolean; tags?: string[] }): Cmd =>
+        ['aws', 's3', 'create', bucket, ...flags(o)],
+    update: (bucket: string, o: { versioning?: boolean; tags?: string[]; 'remove-tags'?: string[] }): Cmd =>
+        ['aws', 's3', 'update', bucket, ...flags(o)],
+    delete: (bucket: string, o: { force?: boolean }): Cmd => ['aws', 's3', 'delete', bucket, ...flags(o), YES],
+    objects: (bucket: string, o: { prefix?: string; limit?: number }): Cmd => ['aws', 's3', 'objects', bucket, ...flags(o)],
+    upload: (bucket: string, file: string, o: { key?: string; 'content-type'?: string }): Cmd =>
+        ['aws', 's3', 'upload', bucket, file, ...flags(o)],
+    download: (bucket: string, key: string, file: string): Cmd => ['aws', 's3', 'download', bucket, key, '--file', file],
+    deleteObject: (bucket: string, key: string): Cmd => ['aws', 's3', 'delete-object', bucket, key, YES],
+};
+
+export const dynamodb = {
+    list: (): Cmd => ['aws', 'dynamodb', 'list'],
+    get: (table: string): Cmd => ['aws', 'dynamodb', 'get', table],
+    create: (table: string, o: {
+        'partition-key': string; 'sort-key'?: string; billing?: string; 'read-capacity'?: number; 'write-capacity'?: number;
+        'ttl-attribute'?: string; 'deletion-protection'?: boolean; tags?: string[]; wait?: boolean;
+    }): Cmd => ['aws', 'dynamodb', 'create', table, ...flags(o)],
+    delete: (table: string, o: { force?: boolean }): Cmd => ['aws', 'dynamodb', 'delete', table, ...flags(o), YES],
+    scan: (table: string, o: { limit?: number }): Cmd => ['aws', 'dynamodb', 'scan', table, ...flags(o)],
+    putItem: (table: string, item: string): Cmd => ['aws', 'dynamodb', 'put-item', table, '--item', item],
+    deleteItem: (table: string, key: Item): Cmd => ['aws', 'dynamodb', 'delete-item', table, '--key', JSON.stringify(key)],
+};
+
+export const rds = {
+    list: (): Cmd => ['aws', 'rds', 'list'],
+    get: (id: string): Cmd => ['aws', 'rds', 'get', id],
+    create: (id: string, o: {
+        engine?: string; 'engine-version'?: string; 'instance-class'?: string; storage?: number; username?: string;
+        password?: string; database?: string; public?: boolean; 'multi-az'?: boolean; 'backup-retention'?: number;
+        'deletion-protection'?: boolean; tags?: string[]; wait?: boolean;
+    }): Cmd => ['aws', 'rds', 'create', id, ...flags(o)],
+    start: (id: string): Cmd => ['aws', 'rds', 'start', id],
+    stop: (id: string): Cmd => ['aws', 'rds', 'stop', id],
+    reboot: (id: string): Cmd => ['aws', 'rds', 'reboot', id],
+    delete: (id: string, o: { 'final-snapshot'?: string; force?: boolean }): Cmd =>
+        ['aws', 'rds', 'delete', id, ...flags(o), YES],
+};
+
+export const lambda = {
+    list: (): Cmd => ['aws', 'lambda', 'list'],
+    get: (name: string): Cmd => ['aws', 'lambda', 'get', name],
+    create: (name: string, o: {
+        code: string; role: string; runtime?: string; handler?: string; memory?: number; timeout?: number;
+        architecture?: string; description?: string; env?: string[]; tags?: string[]; wait?: boolean;
+    }): Cmd => ['aws', 'lambda', 'create', name, ...flags(o)],
+    update: (name: string, o: {
+        code?: string; runtime?: string; handler?: string; memory?: number; timeout?: number;
+        env?: string[]; 'remove-env'?: string[]; wait?: boolean;
+    }): Cmd => ['aws', 'lambda', 'update', name, ...flags(o)],
+    delete: (name: string): Cmd => ['aws', 'lambda', 'delete', name, YES],
+    invoke: (name: string, o: { payload?: string; logs?: boolean }): Cmd => ['aws', 'lambda', 'invoke', name, ...flags(o)],
+};
+
+export const ec2 = {
+    list: (): Cmd => ['aws', 'ec2', 'list'],
+    get: (id: string): Cmd => ['aws', 'ec2', 'get', id],
+    create: (o: {
+        image?: string; 'instance-type'?: string; count?: number; name?: string; 'key-name'?: string;
+        'volume-size'?: number; 'public-ip'?: boolean; 'user-data'?: string; tags?: string[]; wait?: boolean;
+    }): Cmd => ['aws', 'ec2', 'create', ...flags(o)],
+    start: (id: string): Cmd => ['aws', 'ec2', 'start', id],
+    stop: (id: string): Cmd => ['aws', 'ec2', 'stop', id],
+    reboot: (id: string): Cmd => ['aws', 'ec2', 'reboot', id],
+    delete: (id: string, o: { force?: boolean }): Cmd => ['aws', 'ec2', 'delete', id, ...flags(o), YES],
+};
+
+export const REGIONS = [
+    'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2', 'ca-central-1', 'sa-east-1',
+    'eu-west-1', 'eu-west-2', 'eu-west-3', 'eu-central-1', 'eu-north-1', 'eu-south-1',
+    'ap-south-1', 'ap-southeast-1', 'ap-southeast-2', 'ap-northeast-1', 'ap-northeast-2', 'ap-northeast-3',
+    'me-central-1', 'af-south-1',
+];
