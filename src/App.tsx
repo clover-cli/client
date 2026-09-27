@@ -9,10 +9,11 @@ import Connect from './pages/Connect';
 import Databases from './pages/Databases';
 import Functions from './pages/Functions';
 import Overview from './pages/Overview';
+import Permissions from './pages/Permissions';
 import Storage from './pages/Storage';
 import Tables from './pages/Tables';
 
-export type Page = 'overview' | 'tables' | 'storage' | 'functions' | 'databases' | 'compute' | 'activity';
+export type Page = 'overview' | 'tables' | 'storage' | 'functions' | 'databases' | 'compute' | 'permissions' | 'activity';
 
 const NAV: { page: Page; label: string; icon: IconName; service?: string }[] = [
     { page: 'overview', label: 'Overview', icon: 'home' },
@@ -84,6 +85,11 @@ export default function App() {
                     ))}
                 </nav>
                 <div className="sidebar-bottom">
+                    <button className={`nav-item ${page === 'permissions' ? 'active' : ''}`} onClick={() => setPage('permissions')}>
+                        <Icon name="key" />
+                        <span>Permissions</span>
+                        <small>IAM</small>
+                    </button>
                     <button className={`nav-item ${page === 'activity' ? 'active' : ''}`} onClick={() => setPage('activity')}>
                         <Icon name="terminal" />
                         <span>Activity</span>
@@ -125,6 +131,7 @@ export default function App() {
                     {page === 'functions' && <Functions />}
                     {page === 'databases' && <Databases />}
                     {page === 'compute' && <Compute />}
+                    {page === 'permissions' && <Permissions session={session} />}
                     {page === 'activity' && <Activity activity={activity} onClear={() => setActivity((l) => l.filter((a) => a.status === 'running'))} />}
                 </main>
             </div>

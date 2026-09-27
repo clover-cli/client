@@ -274,3 +274,14 @@ pre.stderr { color: var(--text-muted); }
 .activity-ok .activity-status { color: var(--accent); }
 .activity-error .activity-status { color: var(--danger); }
 .activity pre { margin-left: 48px; }
+
+/* ---- Permissions ---- */
+
+.section { margin-bottom: 20px; }
+.section > .grid-2 { margin-top: 12px; }
+a.btn { text-decoration: none; }
+.checks { list-style: none; margin: 0; padding: 0; }
+.checks li { display: flex; align-items: baseline; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.checks li:last-child { border-bottom: none; }
+.checks li > span:first-child { flex: none; display: inline-flex; align-self: center; }
+.checks .missing { margin-left: auto; font-family: var(--mono); font-size: 11.5px; color: var(--text-muted); text-align: right; word-break: break-word; }

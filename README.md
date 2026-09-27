@@ -19,6 +19,7 @@ The client does nothing the CLI can't do. It never uses the AWS SDK. Every actio
 | Functions | `clover aws lambda list/get/create/update/delete/invoke` |
 | Databases | `clover aws rds list/get/create/start/stop/reboot/delete` |
 | Compute | `clover aws ec2 list/create/start/stop/reboot/delete` |
+| Permissions | `clover aws iam policies/check` |
 | Connect / region | `clover aws whoami` |
 
 ## Credentials

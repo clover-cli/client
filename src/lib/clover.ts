@@ -81,6 +81,9 @@ export interface LambdaFunction {
 }
 export interface InvokeResult { statusCode?: number; error?: string; payload: unknown; logs?: string }
 
+export interface AttachedPolicy { name: string; type: 'aws-managed' | 'customer-managed' | 'inline'; via: string; arn?: string }
+export interface CommandCheck { service: string; command: string; allowed: boolean; actions: string[]; missing: string[] }
+
 export interface Instance {
     id: string; name?: string; type?: string; state?: string; az?: string; publicIp?: string;
     privateIp?: string; imageId?: string; keyName?: string; launched?: string; tags?: Tags;
@@ -160,6 +163,11 @@ export const ec2 = {
     stop: (id: string): Cmd => ['aws', 'ec2', 'stop', id],
     reboot: (id: string): Cmd => ['aws', 'ec2', 'reboot', id],
     delete: (id: string, o: { force?: boolean }): Cmd => ['aws', 'ec2', 'delete', id, ...flags(o), YES],
+};
+
+export const iam = {
+    policies: (): Cmd => ['aws', 'iam', 'policies'],
+    check: (): Cmd => ['aws', 'iam', 'check'],
 };
 
 export const REGIONS = [
