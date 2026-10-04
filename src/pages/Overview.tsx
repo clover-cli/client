@@ -1,7 +1,7 @@
 import type { CliInfo, Session } from '../../shared/types';
 import type { Page } from '../App';
 import { CommandPreview, PageHeader, Spinner } from '../components/ui';
-import { cloudFunctions, cloudSql, dynamodb, ec2, gce, gcs, lambda, rds, s3, type Cmd } from '../lib/clover';
+import { cloudFunctions, cloudSql, dynamodb, ec2, firestore, gce, gcs, lambda, rds, s3, type Cmd } from '../lib/clover';
 import { useCli } from '../lib/hooks';
 import { Archive, Database, Server, Table, Zap, type LucideIcon } from 'lucide-react';
 
@@ -37,7 +37,7 @@ export default function Overview({ session, cli, onNavigate }: { session: Sessio
             <PageHeader title="Overview" subtitle={<>{gcp ? 'Project' : 'Account'} {identity.account} · {identity.region}</>} />
 
             <section className="grid-3">
-                <ServiceCard title="Table Editor" service="DynamoDB" icon={Table} cmd={gcp ? null : dynamodb.list()} noun="tables" onOpen={() => onNavigate('tables')} />
+                <ServiceCard title="Table Editor" service={gcp ? 'Firestore' : 'DynamoDB'} icon={Table} cmd={gcp ? firestore.list() : dynamodb.list()} noun={gcp ? 'databases' : 'tables'} onOpen={() => onNavigate('tables')} />
                 <ServiceCard title="Storage" service={gcp ? 'Cloud Storage' : 'S3 · all regions'} icon={Archive} cmd={gcp ? gcs.list() : s3.list()} noun="buckets" onOpen={() => onNavigate('storage')} />
                 <ServiceCard title="Functions" service={gcp ? 'Cloud Functions' : 'Lambda'} icon={Zap} cmd={gcp ? cloudFunctions.list() : lambda.list()} noun="functions" onOpen={() => onNavigate('functions')} />
                 <ServiceCard title="Databases" service={gcp ? 'Cloud SQL' : 'RDS'} icon={Database} cmd={gcp ? cloudSql.list() : rds.list()} noun="databases" onOpen={() => onNavigate('databases')} />

@@ -18,7 +18,7 @@ export type Page = 'overview' | 'tables' | 'storage' | 'functions' | 'databases'
 /** `aws` / `gcp`: the service behind the page on that provider. Pages without one for the session's provider are hidden. */
 const NAV: { page: Page; label: string; icon: LucideIcon; aws?: string; gcp?: string }[] = [
     { page: 'overview', label: 'Overview', icon: House },
-    { page: 'tables', label: 'Table Editor', icon: Table, aws: 'DynamoDB' },
+    { page: 'tables', label: 'Table Editor', icon: Table, aws: 'DynamoDB', gcp: 'Firestore' },
     { page: 'storage', label: 'Storage', icon: Archive, aws: 'S3', gcp: 'Cloud Storage' },
     { page: 'functions', label: 'Functions', icon: Zap, aws: 'Lambda', gcp: 'Cloud Functions' },
     { page: 'databases', label: 'Databases', icon: Database, aws: 'RDS', gcp: 'Cloud SQL' },
@@ -135,7 +135,7 @@ export default function App() {
                 {/* Remount the page when the region changes so everything is listed again. */}
                 <main className="content" key={identity.region}>
                     {page === 'overview' && <Overview session={session} cli={cli} onNavigate={setPage} />}
-                    {page === 'tables' && <Tables />}
+                    {page === 'tables' && <Tables gcp={provider === 'gcp'} />}
                     {page === 'storage' && <Storage gcp={provider === 'gcp'} />}
                     {page === 'functions' && <Functions gcp={provider === 'gcp'} />}
                     {page === 'databases' && <Databases gcp={provider === 'gcp'} />}
