@@ -58,7 +58,11 @@ export async function run<T = unknown>(cmd: Cmd): Promise<T> {
 
 export type Tags = Record<string, string>;
 
-export interface Bucket { name: string; region?: string; versioning?: string; created?: string; tags?: Tags }
+/** `versioning` is S3's 'Enabled' / 'Suspended', or GCP's true / false. GCP has `location` where S3 has `region`. */
+export interface Bucket {
+    name: string; region?: string; location?: string; storageClass?: string; versioning?: string | boolean;
+    created?: string; tags?: Tags; labels?: Tags;
+}
 export interface S3Object { key: string; size?: number; modified?: string }
 
 export interface Table {
@@ -107,6 +111,22 @@ export const s3 = {
         ['aws', 's3', 'upload', bucket, file, ...flags(o)],
     download: (bucket: string, key: string, file: string): Cmd => ['aws', 's3', 'download', bucket, key, '--file', file],
     deleteObject: (bucket: string, key: string): Cmd => ['aws', 's3', 'delete-object', bucket, key, YES],
+};
+
+/** clover gcp storage: the same actions as s3, with labels instead of tags. */
+export const gcs = {
+    list: (): Cmd => ['gcp', 'storage', 'list'],
+    get: (bucket: string): Cmd => ['gcp', 'storage', 'get', bucket],
+    create: (bucket: string, o: { region?: string; versioning?: boolean; labels?: string[] }): Cmd =>
+        ['gcp', 'storage', 'create', bucket, ...flags(o)],
+    update: (bucket: string, o: { versioning?: boolean; labels?: string[]; 'remove-labels'?: string[] }): Cmd =>
+        ['gcp', 'storage', 'update', bucket, ...flags(o)],
+    delete: (bucket: string, o: { force?: boolean }): Cmd => ['gcp', 'storage', 'delete', bucket, ...flags(o), YES],
+    objects: (bucket: string, o: { prefix?: string }): Cmd => ['gcp', 'storage', 'objects', bucket, ...flags(o)],
+    upload: (bucket: string, file: string, o: { key?: string; 'content-type'?: string }): Cmd =>
+        ['gcp', 'storage', 'upload', bucket, file, ...flags(o)],
+    download: (bucket: string, key: string, file: string): Cmd => ['gcp', 'storage', 'download', bucket, key, '--file', file],
+    deleteObject: (bucket: string, key: string): Cmd => ['gcp', 'storage', 'delete-object', bucket, key, YES],
 };
 
 export const dynamodb = {

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ActionModal } from '../components/ActionModal';
 import { Button, Check, DataTable, Empty, ErrorBox, Field, KeyValues, Modal, PageHeader, Spinner } from '../components/ui';
 import { formatBytes, formatDate } from '../lib/format';
-import { REGIONS, lines, runRaw, s3, type Bucket, type S3Object } from '../lib/clover';
+import { REGIONS, gcs, lines, runRaw, s3, type Bucket, type S3Object } from '../lib/clover';
 import { useCli } from '../lib/hooks';
 import { Archive, Download, File, Folder, Pencil, Plus, RefreshCw, RotateCw, Trash2, UploadIcon } from 'lucide-react';
 
@@ -10,24 +10,31 @@ const LIMIT = 1000;
 
 const basename = (p: string) => p.split(/[\\/]/).filter(Boolean).pop() ?? p;
 
-function CreateBucket({ onClose, onDone }: { onClose: () => void; onDone: (name: string) => void }) {
+function CreateBucket({ gcp, onClose, onDone }: { gcp: boolean; onClose: () => void; onDone: (name: string) => void }) {
     const [name, setName] = useState('');
     const [region, setRegion] = useState('');
     const [versioning, setVersioning] = useState(false);
     const [tags, setTags] = useState('');
-    const cmd = s3.create(name || '<bucket>', { region, versioning: versioning || undefined, tags: lines(tags) });
+    const o = { region, versioning: versioning || undefined };
+    const cmd = gcp ? gcs.create(name || '<bucket>', { ...o, labels: lines(tags) }) : s3.create(name || '<bucket>', { ...o, tags: lines(tags) });
     return (
         <ActionModal title="New bucket" submitLabel="Create bucket" cmd={cmd} valid={!!name} onClose={onClose} onDone={() => onDone(name)}>
-            <Field label="Name" hint="Globally unique across all of AWS: lowercase letters, numbers, dots and hyphens">
+            <Field label="Name" hint={`Globally unique across all of ${gcp ? 'Cloud Storage' : 'AWS'}: lowercase letters, numbers, dots and hyphens`}>
                 <input value={name} onChange={(e) => setName(e.target.value.toLowerCase())} placeholder="my-app-assets" autoFocus spellCheck={false} />
             </Field>
-            <Field label="Region">
-                <select value={region} onChange={(e) => setRegion(e.target.value)}>
-                    <option value="">Current region</option>
-                    {REGIONS.map((r) => <option key={r}>{r}</option>)}
-                </select>
-            </Field>
-            <Field label="Tags (optional)" hint="One Key=Value per line">
+            {gcp ? (
+                <Field label="Location (optional)" hint="A region like europe-west1, or a multi-region like US or EU">
+                    <input value={region} onChange={(e) => setRegion(e.target.value)} placeholder="us-central1" spellCheck={false} />
+                </Field>
+            ) : (
+                <Field label="Region">
+                    <select value={region} onChange={(e) => setRegion(e.target.value)}>
+                        <option value="">Current region</option>
+                        {REGIONS.map((r) => <option key={r}>{r}</option>)}
+                    </select>
+                </Field>
+            )}
+            <Field label={`${gcp ? 'Labels' : 'Tags'} (optional)`} hint="One Key=Value per line">
                 <textarea rows={2} value={tags} onChange={(e) => setTags(e.target.value)} placeholder="env=dev" spellCheck={false} />
             </Field>
             <Check label="Versioning" hint="Keep every version of every object" checked={versioning} onChange={setVersioning} />
@@ -35,11 +42,11 @@ function CreateBucket({ onClose, onDone }: { onClose: () => void; onDone: (name:
     );
 }
 
-function Upload({ bucket, prefix, file, onClose, onDone }: { bucket: string; prefix: string; file: string; onClose: () => void; onDone: () => void }) {
+function Upload({ gcp, bucket, prefix, file, onClose, onDone }: { gcp: boolean; bucket: string; prefix: string; file: string; onClose: () => void; onDone: () => void }) {
     const [key, setKey] = useState(prefix + basename(file));
     const [contentType, setContentType] = useState('');
     return (
-        <ActionModal title="Upload file" submitLabel="Upload" cmd={s3.upload(bucket, file, { key, 'content-type': contentType })}
+        <ActionModal title="Upload file" submitLabel="Upload" cmd={(gcp ? gcs : s3).upload(bucket, file, { key, 'content-type': contentType })}
             valid={!!key} onClose={onClose} onDone={onDone}>
             <Field label="File"><input value={file} readOnly /></Field>
             <Field label="Key" hint="The object's path in the bucket">
@@ -52,31 +59,37 @@ function Upload({ bucket, prefix, file, onClose, onDone }: { bucket: string; pre
     );
 }
 
-function BucketSettings({ name, onClose }: { name: string; onClose: () => void }) {
-    const bucket = useCli<Bucket>(s3.get(name));
+function BucketSettings({ gcp, name, onClose }: { gcp: boolean; name: string; onClose: () => void }) {
+    const api = gcp ? gcs : s3;
+    const bucket = useCli<Bucket>(api.get(name));
     const [toggling, setToggling] = useState(false);
-    const enabled = bucket.data?.versioning === 'Enabled';
+    const enabled = bucket.data?.versioning === 'Enabled' || bucket.data?.versioning === true;
     return (
         <Modal title={`${name} settings`} onClose={onClose}>
             <ErrorBox error={bucket.error} />
             {bucket.loading && !bucket.data && <Spinner />}
             {bucket.data && <KeyValues value={bucket.data} />}
             {bucket.data && (
-                <Button icon={RefreshCw} onClick={() => setToggling(true)}>{enabled ? 'Suspend versioning' : 'Enable versioning'}</Button>
+                <Button icon={RefreshCw} onClick={() => setToggling(true)}>{enabled ? `${gcp ? 'Disable' : 'Suspend'} versioning` : 'Enable versioning'}</Button>
             )}
             {toggling && (
-                <ActionModal title={enabled ? 'Suspend versioning' : 'Enable versioning'} submitLabel="Apply"
-                    cmd={s3.update(name, { versioning: !enabled })} onClose={() => setToggling(false)} onDone={bucket.reload}>
-                    {enabled && <p className="muted">S3 can't turn versioning fully off once enabled; it can only be suspended. Existing versions are kept.</p>}
+                <ActionModal title={enabled ? `${gcp ? 'Disable' : 'Suspend'} versioning` : 'Enable versioning'} submitLabel="Apply"
+                    cmd={api.update(name, { versioning: !enabled })} onClose={() => setToggling(false)} onDone={bucket.reload}>
+                    {enabled && !gcp && <p className="muted">S3 can't turn versioning fully off once enabled; it can only be suspended. Existing versions are kept.</p>}
                 </ActionModal>
             )}
         </Modal>
     );
 }
 
-function BucketView({ name, onDeleted }: { name: string; onDeleted: () => void }) {
+function BucketView({ gcp, name, onDeleted }: { gcp: boolean; name: string; onDeleted: () => void }) {
+    const api = gcp ? gcs : s3;
+    const scheme = gcp ? 'gs' : 's3';
     const [prefix, setPrefix] = useState('');
-    const objects = useCli<S3Object[]>(s3.objects(name, { prefix: prefix || undefined, limit: LIMIT }));
+    // `clover gcp storage objects` has no --limit: it lists every object under the prefix.
+    const objects = useCli<S3Object[]>(gcp
+        ? gcs.objects(name, { prefix: prefix || undefined })
+        : s3.objects(name, { prefix: prefix || undefined, limit: LIMIT }));
     const [upload, setUpload] = useState<string>();
     const [deleting, setDeleting] = useState<string>();
     const [deletingBucket, setDeletingBucket] = useState(false);
@@ -100,14 +113,14 @@ function BucketView({ name, onDeleted }: { name: string; onDeleted: () => void }
     const crumbs = prefix.split('/').filter(Boolean);
 
     async function pickUpload() {
-        const file = await window.clover.dialog.openPath({ title: 'Upload to S3' });
+        const file = await window.clover.dialog.openPath({ title: `Upload to ${gcp ? 'Cloud Storage' : 'S3'}` });
         if (file) setUpload(file);
     }
 
     async function download(key: string) {
         const file = await window.clover.dialog.savePath(basename(key));
         if (!file) return;
-        const result = await runRaw(s3.download(name, key, file));
+        const result = await runRaw(api.download(name, key, file));
         setNotice(result.code === 0 ? `Downloaded to ${file}` : result.stderr.trim());
     }
 
@@ -146,20 +159,20 @@ function BucketView({ name, onDeleted }: { name: string; onDeleted: () => void }
                         </span>
                     )} />
             )}
-            {objects.data?.length === LIMIT && <p className="muted small">Showing the first {LIMIT} objects under this prefix.</p>}
+            {!gcp && objects.data?.length === LIMIT && <p className="muted small">Showing the first {LIMIT} objects under this prefix.</p>}
 
-            {upload && <Upload bucket={name} prefix={prefix} file={upload} onClose={() => setUpload(undefined)} onDone={objects.reload} />}
-            {settings && <BucketSettings name={name} onClose={() => setSettings(false)} />}
+            {upload && <Upload gcp={gcp} bucket={name} prefix={prefix} file={upload} onClose={() => setUpload(undefined)} onDone={objects.reload} />}
+            {settings && <BucketSettings gcp={gcp} name={name} onClose={() => setSettings(false)} />}
             {deleting && (
-                <ActionModal danger title="Delete object" submitLabel="Delete" cmd={s3.deleteObject(name, deleting)}
+                <ActionModal danger title="Delete object" submitLabel="Delete" cmd={api.deleteObject(name, deleting)}
                     onClose={() => setDeleting(undefined)} onDone={objects.reload}>
-                    <p>Delete <code>s3://{name}/{deleting}</code>?</p>
+                    <p>Delete <code>{scheme}://{name}/{deleting}</code>?</p>
                 </ActionModal>
             )}
             {deletingBucket && (
                 <ActionModal danger title="Delete bucket" submitLabel="Delete bucket" confirmWord={name}
-                    cmd={s3.delete(name, { force: force || undefined })} onClose={() => setDeletingBucket(false)} onDone={onDeleted}>
-                    <p>S3 only deletes empty buckets.</p>
+                    cmd={api.delete(name, { force: force || undefined })} onClose={() => setDeletingBucket(false)} onDone={onDeleted}>
+                    <p>{gcp ? 'Cloud Storage' : 'S3'} only deletes empty buckets.</p>
                     <Check label="Delete every object and version first (--force)" checked={force} onChange={setForce} />
                 </ActionModal>
             )}
@@ -167,8 +180,8 @@ function BucketView({ name, onDeleted }: { name: string; onDeleted: () => void }
     );
 }
 
-export default function Storage() {
-    const buckets = useCli<Bucket[]>(s3.list());
+export default function Storage({ gcp }: { gcp: boolean }) {
+    const buckets = useCli<Bucket[]>((gcp ? gcs : s3).list());
     const [selected, setSelected] = useState<string>();
     const [creating, setCreating] = useState(false);
     const current = selected ?? buckets.data?.[0]?.name;
@@ -176,7 +189,7 @@ export default function Storage() {
     return (
         <div className="page page-split">
             <aside className="list-pane">
-                <PageHeader title="Storage" subtitle="S3 buckets (all regions)" />
+                <PageHeader title="Storage" subtitle={gcp ? 'Cloud Storage buckets (all locations)' : 'S3 buckets (all regions)'} />
                 <Button variant="primary" icon={Plus} onClick={() => setCreating(true)}>New bucket</Button>
                 <ErrorBox error={buckets.error} />
                 {buckets.loading && !buckets.data && <Spinner />}
@@ -185,21 +198,21 @@ export default function Storage() {
                         <li key={b.name}>
                             <button className={b.name === current ? 'active' : ''} onClick={() => setSelected(b.name)}>
                                 {b.name}
-                                {b.region && <small>{b.region}</small>}
+                                {(b.region ?? b.location) && <small>{b.region ?? b.location}</small>}
                             </button>
                         </li>
                     ))}
                 </ul>
             </aside>
             {current ? (
-                <BucketView key={current} name={current} onDeleted={() => { setSelected(undefined); buckets.reload(); }} />
+                <BucketView key={current} gcp={gcp} name={current} onDeleted={() => { setSelected(undefined); buckets.reload(); }} />
             ) : buckets.data && (
                 <Empty icon={Archive} title="No buckets yet">
                     <p className="muted">Buckets hold files: uploads, images, static sites, backups.</p>
                     <Button variant="primary" icon={Plus} onClick={() => setCreating(true)}>Create a bucket</Button>
                 </Empty>
             )}
-            {creating && <CreateBucket onClose={() => setCreating(false)} onDone={(n) => { setSelected(n); buckets.reload(); }} />}
+            {creating && <CreateBucket gcp={gcp} onClose={() => setCreating(false)} onDone={(n) => { setSelected(n); buckets.reload(); }} />}
         </div>
     );
 }

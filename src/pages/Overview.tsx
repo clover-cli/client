@@ -1,7 +1,7 @@
 import type { CliInfo, Session } from '../../shared/types';
 import type { Page } from '../App';
 import { CommandPreview, PageHeader, Spinner } from '../components/ui';
-import { dynamodb, ec2, lambda, rds, s3, type Cmd } from '../lib/clover';
+import { dynamodb, ec2, gcs, lambda, rds, s3, type Cmd } from '../lib/clover';
 import { useCli } from '../lib/hooks';
 import { Archive, Database, Server, Table, Zap, type LucideIcon } from 'lucide-react';
 
@@ -38,7 +38,7 @@ export default function Overview({ session, cli, onNavigate }: { session: Sessio
 
             <section className="grid-3">
                 <ServiceCard title="Table Editor" service="DynamoDB" icon={Table} cmd={gcp ? null : dynamodb.list()} noun="tables" onOpen={() => onNavigate('tables')} />
-                <ServiceCard title="Storage" service="S3 · all regions" icon={Archive} cmd={gcp ? null : s3.list()} noun="buckets" onOpen={() => onNavigate('storage')} />
+                <ServiceCard title="Storage" service={gcp ? 'Cloud Storage' : 'S3 · all regions'} icon={Archive} cmd={gcp ? gcs.list() : s3.list()} noun="buckets" onOpen={() => onNavigate('storage')} />
                 <ServiceCard title="Functions" service="Lambda" icon={Zap} cmd={gcp ? null : lambda.list()} noun="functions" onOpen={() => onNavigate('functions')} />
                 <ServiceCard title="Databases" service="RDS" icon={Database} cmd={gcp ? null : rds.list()} noun="databases" onOpen={() => onNavigate('databases')} />
                 <ServiceCard title="Compute" service="EC2" icon={Server} cmd={gcp ? null : ec2.list()} noun="instances" onOpen={() => onNavigate('compute')} />

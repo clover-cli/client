@@ -19,7 +19,7 @@ export type Page = 'overview' | 'tables' | 'storage' | 'functions' | 'databases'
 const NAV: { page: Page; label: string; icon: LucideIcon; aws?: string; gcp?: string }[] = [
     { page: 'overview', label: 'Overview', icon: House },
     { page: 'tables', label: 'Table Editor', icon: Table, aws: 'DynamoDB' },
-    { page: 'storage', label: 'Storage', icon: Archive, aws: 'S3' },
+    { page: 'storage', label: 'Storage', icon: Archive, aws: 'S3', gcp: 'Cloud Storage' },
     { page: 'functions', label: 'Functions', icon: Zap, aws: 'Lambda' },
     { page: 'databases', label: 'Databases', icon: Database, aws: 'RDS' },
     { page: 'compute', label: 'Compute', icon: Server, aws: 'EC2' },
@@ -136,7 +136,7 @@ export default function App() {
                 <main className="content" key={identity.region}>
                     {page === 'overview' && <Overview session={session} cli={cli} onNavigate={setPage} />}
                     {page === 'tables' && <Tables />}
-                    {page === 'storage' && <Storage />}
+                    {page === 'storage' && <Storage gcp={provider === 'gcp'} />}
                     {page === 'functions' && <Functions />}
                     {page === 'databases' && <Databases />}
                     {page === 'compute' && <Compute />}
