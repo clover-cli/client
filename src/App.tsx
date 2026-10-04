@@ -20,7 +20,7 @@ const NAV: { page: Page; label: string; icon: LucideIcon; aws?: string; gcp?: st
     { page: 'overview', label: 'Overview', icon: House },
     { page: 'tables', label: 'Table Editor', icon: Table, aws: 'DynamoDB' },
     { page: 'storage', label: 'Storage', icon: Archive, aws: 'S3', gcp: 'Cloud Storage' },
-    { page: 'functions', label: 'Functions', icon: Zap, aws: 'Lambda' },
+    { page: 'functions', label: 'Functions', icon: Zap, aws: 'Lambda', gcp: 'Cloud Functions' },
     { page: 'databases', label: 'Databases', icon: Database, aws: 'RDS' },
     { page: 'compute', label: 'Compute', icon: Server, aws: 'EC2' },
 ];
@@ -137,7 +137,7 @@ export default function App() {
                     {page === 'overview' && <Overview session={session} cli={cli} onNavigate={setPage} />}
                     {page === 'tables' && <Tables />}
                     {page === 'storage' && <Storage gcp={provider === 'gcp'} />}
-                    {page === 'functions' && <Functions />}
+                    {page === 'functions' && <Functions gcp={provider === 'gcp'} />}
                     {page === 'databases' && <Databases />}
                     {page === 'compute' && <Compute />}
                     {page === 'permissions' && <Permissions session={session} />}

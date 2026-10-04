@@ -78,10 +78,12 @@ export interface Database {
     public?: boolean; deletionProtection?: boolean; passwordSecret?: string; arn?: string;
 }
 
+/** A Lambda function, or a Cloud Function (which has `memory` like "256M", `updated`, `entryPoint`, `uri`...). */
 export interface LambdaFunction {
     name: string; runtime?: string; handler?: string; memoryMb?: number; timeoutSec?: number;
     architecture?: string; state?: string; lastUpdate?: string; modified?: string; role?: string;
     environment?: Record<string, string>; arn?: string;
+    memory?: string; updated?: string; entryPoint?: string; serviceAccount?: string; uri?: string; labels?: Tags;
 }
 export interface InvokeResult { statusCode?: number; error?: string; payload: unknown; logs?: string }
 
@@ -170,6 +172,22 @@ export const lambda = {
     }): Cmd => ['aws', 'lambda', 'update', name, ...flags(o)],
     delete: (name: string): Cmd => ['aws', 'lambda', 'delete', name, YES],
     invoke: (name: string, o: { payload?: string; logs?: boolean }): Cmd => ['aws', 'lambda', 'invoke', name, ...flags(o)],
+};
+
+/** clover gcp functions: Cloud Functions (2nd gen) in the CLI's default region. */
+export const cloudFunctions = {
+    list: (): Cmd => ['gcp', 'functions', 'list'],
+    get: (name: string): Cmd => ['gcp', 'functions', 'get', name],
+    create: (name: string, o: {
+        source: string; runtime?: string; 'entry-point'?: string; memory?: number; timeout?: number;
+        description?: string; env?: string[]; labels?: string[]; wait?: boolean;
+    }): Cmd => ['gcp', 'functions', 'create', name, ...flags(o)],
+    update: (name: string, o: {
+        source?: string; runtime?: string; 'entry-point'?: string; memory?: number; timeout?: number;
+        env?: string[]; 'remove-env'?: string[]; wait?: boolean;
+    }): Cmd => ['gcp', 'functions', 'update', name, ...flags(o)],
+    delete: (name: string): Cmd => ['gcp', 'functions', 'delete', name, YES],
+    invoke: (name: string, o: { payload?: string }): Cmd => ['gcp', 'functions', 'invoke', name, ...flags(o)],
 };
 
 export const ec2 = {
