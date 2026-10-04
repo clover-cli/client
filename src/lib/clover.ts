@@ -92,7 +92,10 @@ export interface LambdaFunction {
 export interface InvokeResult { statusCode?: number; error?: string; payload: unknown; logs?: string }
 
 export interface AttachedPolicy { name: string; type: 'aws-managed' | 'customer-managed' | 'inline'; via: string; arn?: string }
-export interface CommandCheck { service: string; command: string; allowed: boolean; actions: string[]; missing: string[] }
+/** What `clover aws|gcp iam check` prints: IAM actions on AWS, permissions on GCP. */
+export interface CommandCheck { service: string; command: string; allowed: boolean; actions?: string[]; permissions?: string[]; missing: string[] }
+/** What `clover gcp iam policies` prints: the project roles granted directly. */
+export interface GcpRole { role: string }
 
 export interface Instance {
     id: string; name?: string; type?: string; state?: string; az?: string; publicIp?: string;
@@ -257,6 +260,11 @@ export const gce = {
 export const iam = {
     policies: (): Cmd => ['aws', 'iam', 'policies'],
     check: (): Cmd => ['aws', 'iam', 'check'],
+};
+
+export const gcpIam = {
+    policies: (): Cmd => ['gcp', 'iam', 'policies'],
+    check: (): Cmd => ['gcp', 'iam', 'check'],
 };
 
 export const REGIONS = [

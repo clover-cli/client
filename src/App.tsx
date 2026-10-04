@@ -87,13 +87,11 @@ export default function App() {
                     ))}
                 </nav>
                 <div className="sidebar-bottom">
-                    {provider === 'aws' && (
-                        <button className={`nav-item ${page === 'permissions' ? 'active' : ''}`} onClick={() => setPage('permissions')}>
-                            <Key size={16} />
-                            <span>Permissions</span>
-                            <small>IAM</small>
-                        </button>
-                    )}
+                    <button className={`nav-item ${page === 'permissions' ? 'active' : ''}`} onClick={() => setPage('permissions')}>
+                        <Key size={16} />
+                        <span>Permissions</span>
+                        <small>IAM</small>
+                    </button>
                     <button className={`nav-item ${page === 'activity' ? 'active' : ''}`} onClick={() => setPage('activity')}>
                         <Terminal size={16} />
                         <span>Activity</span>

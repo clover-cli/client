@@ -9,15 +9,15 @@ The client does nothing the CLI can't do. It never uses a cloud SDK. Every actio
 - **Activity** lists every command the app ran this session, with exit codes and errors.
 - To add something to the client, add it to the CLI first, then add a builder in `src/lib/clover.ts`.
 
-| Screen | CLI |
-| --- | --- |
-| Table Editor | `clover aws dynamodb list/get/create/delete/scan/put-item/delete-item` |
-| Storage | `clover aws s3 list/get/create/update/delete/objects/upload/download/delete-object` |
-| Functions | `clover aws lambda list/get/create/update/delete/invoke` |
-| Databases | `clover aws rds list/get/create/start/stop/reboot/delete` |
-| Compute | `clover aws ec2 list/create/start/stop/reboot/delete` |
-| Permissions | `clover aws iam policies/check` |
-| Connect / region | `clover aws whoami`, `clover gcp whoami` |
+| Screen | AWS | GCP |
+| --- | --- | --- |
+| Table Editor | `clover aws dynamodb list/get/create/delete/scan/put-item/delete-item` | `clover gcp firestore list/get/create/delete/scan/put-item/delete-item` |
+| Storage | `clover aws s3 list/get/create/update/delete/objects/upload/download/delete-object` | `clover gcp storage` (same actions) |
+| Functions | `clover aws lambda list/get/create/update/delete/invoke` | `clover gcp functions` (same actions) |
+| Databases | `clover aws rds list/get/create/start/stop/reboot/delete` | `clover gcp sql` (same actions) |
+| Compute | `clover aws ec2 list/create/start/stop/reboot/delete` | `clover gcp compute` (same actions) |
+| Permissions | `clover aws iam policies/check` | `clover gcp iam policies/check` |
+| Connect / region | `clover aws whoami` | `clover gcp whoami` |
 
 ## Development
 

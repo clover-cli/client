@@ -2,7 +2,7 @@
   "name": "clover-client",
   "private": true,
   "version": "0.0.0",
-  "description": "Desktop client for the clover CLI: a Supabase-style UI over your own AWS account",
+  "description": "Desktop client for the clover CLI: a Supabase-style UI over your own AWS account or GCP project",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {

@@ -1,6 +1,6 @@
 import type { Session } from '../../shared/types';
 import { Button, CommandPreview, DataTable, ErrorBox, PageHeader, Spinner } from '../components/ui';
-import { iam, type AttachedPolicy, type CommandCheck } from '../lib/clover';
+import { gcpIam, iam, type AttachedPolicy, type CommandCheck, type GcpRole } from '../lib/clover';
 import { useCli } from '../lib/hooks';
 import { Check, Key, RotateCw, X } from 'lucide-react';
 
@@ -10,6 +10,11 @@ const SERVICE_NAMES: Record<string, string> = {
     lambda: 'Functions · Lambda',
     rds: 'Databases · RDS',
     ec2: 'Compute · EC2',
+    firestore: 'Table Editor · Firestore',
+    storage: 'Storage · Cloud Storage',
+    functions: 'Functions · Cloud Functions',
+    sql: 'Databases · Cloud SQL',
+    compute: 'Compute · Compute Engine',
 };
 
 const order = (service: string) => {
@@ -58,7 +63,7 @@ function ServiceChecks({ service, checks }: { service: string; checks: CommandCh
             </div>
             <ul className="checks">
                 {checks.map((c) => (
-                    <li key={c.command} title={c.actions.join('\n')}>
+                    <li key={c.command} title={(c.actions ?? c.permissions ?? []).join('\n')}>
                         <span className={c.allowed ? 'status-good' : 'status-bad'}>
                             {c.allowed ? <Check size={14} /> : <X size={14} />}
                         </span>
@@ -72,9 +77,14 @@ function ServiceChecks({ service, checks }: { service: string; checks: CommandCh
 }
 
 export default function Permissions({ session }: { session: Session }) {
-    const policies = useCli<AttachedPolicy[]>(iam.policies());
-    const checks = useCli<CommandCheck[]>(iam.check());
-    const url = session.identity && consoleUrl(session.identity.arn);
+    const gcp = session.provider === 'gcp';
+    const api = gcp ? gcpIam : iam;
+    const policies = useCli<AttachedPolicy[]>(gcp ? null : iam.policies());
+    const roles = useCli<GcpRole[]>(gcp ? gcpIam.policies() : null);
+    const checks = useCli<CommandCheck[]>(api.check());
+    const url = session.identity && (gcp
+        ? `https://console.cloud.google.com/iam-admin/iam?project=${encodeURIComponent(session.identity.account)}`
+        : consoleUrl(session.identity.arn));
 
     const byService = new Map<string, CommandCheck[]>();
     for (const c of checks.data ?? []) byService.set(c.service, [...byService.get(c.service) ?? [], c]);
@@ -85,33 +95,46 @@ export default function Permissions({ session }: { session: Session }) {
                 title="Permissions"
                 subtitle={<>What <code>{session.identity?.arn.split(':').pop()}</code> can do. Permissions are changed in IAM, not here.</>}
                 actions={<>
-                    <Button icon={RotateCw} busy={policies.loading || checks.loading} onClick={() => { policies.reload(); checks.reload(); }}>Refresh</Button>
-                    {url && <a className="btn btn-default" href={url} target="_blank" rel="noreferrer"><Key size={16} /> Open in IAM console</a>}
+                    <Button icon={RotateCw} busy={policies.loading || roles.loading || checks.loading} onClick={() => { policies.reload(); roles.reload(); checks.reload(); }}>Refresh</Button>
+                    {url && <a className="btn btn-default" href={url} target="_blank" rel="noreferrer"><Key size={16} /> Open in {gcp ? 'Cloud' : 'IAM'} console</a>}
                 </>}
             />
 
-            <section className="card section">
-                <h3>Policies</h3>
-                <p className="muted small">Attached to you directly, inline, and through your groups.</p>
-                {policies.loading && !policies.data && <Spinner />}
-                <ErrorBox error={policies.error} />
-                {policies.error && <IamReadHint error={policies.error} />}
-                {policies.data?.length === 0 && <p>No policies, so these credentials can't do anything yet.</p>}
-                {!!policies.data?.length && (
-                    <DataTable rows={policies.data} rowKey={(p) => `${p.via}/${p.name}`} columns={[
-                        { key: 'name', label: 'Policy' },
-                        { key: 'type', label: 'Type', render: (p) => POLICY_TYPES[p.type] },
-                        { key: 'via', label: 'Attached to', render: (p) => p.via === 'user' || p.via === 'role' ? `This ${p.via}` : p.via.replace(/^group /, 'Group ') },
-                    ]} />
-                )}
-                <CommandPreview cmd={iam.policies()} />
-            </section>
+            {gcp ? (
+                <section className="card section">
+                    <h3>Roles</h3>
+                    <p className="muted small">Granted to you directly on the project (roles through groups aren't shown). Needs a service account key file.</p>
+                    {roles.loading && !roles.data && <Spinner />}
+                    <ErrorBox error={roles.error} />
+                    {roles.data?.length === 0 && <p>No roles granted directly.</p>}
+                    {!!roles.data?.length && <DataTable rows={roles.data} rowKey={(r) => r.role} columns={[{ key: 'role', label: 'Role' }]} />}
+                    <CommandPreview cmd={gcpIam.policies()} />
+                </section>
+            ) : (
+                <section className="card section">
+                    <h3>Policies</h3>
+                    <p className="muted small">Attached to you directly, inline, and through your groups.</p>
+                    {policies.loading && !policies.data && <Spinner />}
+                    <ErrorBox error={policies.error} />
+                    {policies.error && <IamReadHint error={policies.error} />}
+                    {policies.data?.length === 0 && <p>No policies, so these credentials can't do anything yet.</p>}
+                    {!!policies.data?.length && (
+                        <DataTable rows={policies.data} rowKey={(p) => `${p.via}/${p.name}`} columns={[
+                            { key: 'name', label: 'Policy' },
+                            { key: 'type', label: 'Type', render: (p) => POLICY_TYPES[p.type] },
+                            { key: 'via', label: 'Attached to', render: (p) => p.via === 'user' || p.via === 'role' ? `This ${p.via}` : p.via.replace(/^group /, 'Group ') },
+                        ]} />
+                    )}
+                    <CommandPreview cmd={iam.policies()} />
+                </section>
+            )}
 
             <section className="section">
                 <h3>What you can do in Clover</h3>
                 <p className="muted small">
-                    Checked with the IAM policy simulator against all resources. A policy limited to specific buckets or
-                    tables shows those actions as missing here, even though they work on the allowed resources.
+                    {gcp
+                        ? 'Checked with testIamPermissions on the project. A role granted on a single bucket or instance shows those permissions as missing here, even though they work there.'
+                        : 'Checked with the IAM policy simulator against all resources. A policy limited to specific buckets or tables shows those actions as missing here, even though they work on the allowed resources.'}
                 </p>
                 {checks.loading && !checks.data && <Spinner />}
                 <ErrorBox error={checks.error} />
@@ -124,7 +147,7 @@ export default function Permissions({ session }: { session: Session }) {
                             .map((service) => <ServiceChecks key={service} service={service} checks={byService.get(service)!} />)}
                     </div>
                 )}
-                <CommandPreview cmd={iam.check()} />
+                <CommandPreview cmd={api.check()} />
             </section>
         </div>
     );
