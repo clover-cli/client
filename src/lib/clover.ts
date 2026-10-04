@@ -58,7 +58,11 @@ export async function run<T = unknown>(cmd: Cmd): Promise<T> {
 
 export type Tags = Record<string, string>;
 
-export interface Bucket { name: string; region?: string; versioning?: string; created?: string; tags?: Tags }
+/** `versioning` is S3's 'Enabled' / 'Suspended', or GCP's true / false. GCP has `location` where S3 has `region`. */
+export interface Bucket {
+    name: string; region?: string; location?: string; storageClass?: string; versioning?: string | boolean;
+    created?: string; tags?: Tags; labels?: Tags;
+}
 export interface S3Object { key: string; size?: number; modified?: string }
 
 export interface Table {
@@ -67,26 +71,41 @@ export interface Table {
     deletionProtection?: boolean; ttlAttribute?: string; arn?: string;
 }
 export type Item = Record<string, unknown>;
+/** What `clover gcp firestore list/get` prints. */
+export interface FirestoreDatabase { name: string; location?: string; type?: string; deletionProtection?: boolean; pointInTimeRecovery?: boolean; created?: string }
 
+/** An RDS database, or a Cloud SQL instance (which has `tier`, `activation`, `ip`, `connectionName`...). */
 export interface Database {
     id: string; engine?: string; version?: string; class?: string; status?: string; storageGb?: number;
     endpoint?: string; port?: number; username?: string; database?: string; multiAz?: boolean;
     public?: boolean; deletionProtection?: boolean; passwordSecret?: string; arn?: string;
+    tier?: string; activation?: string; ip?: string; connectionName?: string; region?: string; labels?: Tags;
 }
 
+/** A Lambda function, or a Cloud Function (which has `memory` like "256M", `updated`, `entryPoint`, `uri`...). */
 export interface LambdaFunction {
     name: string; runtime?: string; handler?: string; memoryMb?: number; timeoutSec?: number;
     architecture?: string; state?: string; lastUpdate?: string; modified?: string; role?: string;
     environment?: Record<string, string>; arn?: string;
+    memory?: string; updated?: string; entryPoint?: string; serviceAccount?: string; uri?: string; labels?: Tags;
 }
 export interface InvokeResult { statusCode?: number; error?: string; payload: unknown; logs?: string }
 
 export interface AttachedPolicy { name: string; type: 'aws-managed' | 'customer-managed' | 'inline'; via: string; arn?: string }
-export interface CommandCheck { service: string; command: string; allowed: boolean; actions: string[]; missing: string[] }
+/** What `clover aws|gcp iam check` prints: IAM actions on AWS, permissions on GCP. */
+export interface CommandCheck { service: string; command: string; allowed: boolean; actions?: string[]; permissions?: string[]; missing: string[] }
+/** What `clover gcp iam policies` prints: the project roles granted directly. */
+export interface GcpRole { role: string }
 
 export interface Instance {
     id: string; name?: string; type?: string; state?: string; az?: string; publicIp?: string;
     privateIp?: string; imageId?: string; keyName?: string; launched?: string; tags?: Tags;
+}
+
+/** What `clover gcp compute list` prints. */
+export interface GceInstance {
+    name: string; zone?: string; machineType?: string; status?: string; publicIp?: string; privateIp?: string;
+    created?: string; labels?: Tags;
 }
 
 // ---- Commands ----
@@ -109,6 +128,22 @@ export const s3 = {
     deleteObject: (bucket: string, key: string): Cmd => ['aws', 's3', 'delete-object', bucket, key, YES],
 };
 
+/** clover gcp storage: the same actions as s3, with labels instead of tags. */
+export const gcs = {
+    list: (): Cmd => ['gcp', 'storage', 'list'],
+    get: (bucket: string): Cmd => ['gcp', 'storage', 'get', bucket],
+    create: (bucket: string, o: { region?: string; versioning?: boolean; labels?: string[] }): Cmd =>
+        ['gcp', 'storage', 'create', bucket, ...flags(o)],
+    update: (bucket: string, o: { versioning?: boolean; labels?: string[]; 'remove-labels'?: string[] }): Cmd =>
+        ['gcp', 'storage', 'update', bucket, ...flags(o)],
+    delete: (bucket: string, o: { force?: boolean }): Cmd => ['gcp', 'storage', 'delete', bucket, ...flags(o), YES],
+    objects: (bucket: string, o: { prefix?: string }): Cmd => ['gcp', 'storage', 'objects', bucket, ...flags(o)],
+    upload: (bucket: string, file: string, o: { key?: string; 'content-type'?: string }): Cmd =>
+        ['gcp', 'storage', 'upload', bucket, file, ...flags(o)],
+    download: (bucket: string, key: string, file: string): Cmd => ['gcp', 'storage', 'download', bucket, key, '--file', file],
+    deleteObject: (bucket: string, key: string): Cmd => ['gcp', 'storage', 'delete-object', bucket, key, YES],
+};
+
 export const dynamodb = {
     list: (): Cmd => ['aws', 'dynamodb', 'list'],
     get: (table: string): Cmd => ['aws', 'dynamodb', 'get', table],
@@ -120,6 +155,20 @@ export const dynamodb = {
     scan: (table: string, o: { limit?: number }): Cmd => ['aws', 'dynamodb', 'scan', table, ...flags(o)],
     putItem: (table: string, item: string): Cmd => ['aws', 'dynamodb', 'put-item', table, '--item', item],
     deleteItem: (table: string, key: Item): Cmd => ['aws', 'dynamodb', 'delete-item', table, '--key', JSON.stringify(key)],
+};
+
+/** clover gcp firestore: databases, and JSON documents in collections (`default` is the (default) database). */
+export const firestore = {
+    list: (): Cmd => ['gcp', 'firestore', 'list'],
+    get: (db: string): Cmd => ['gcp', 'firestore', 'get', db],
+    create: (db: string, o: { region?: string; 'deletion-protection'?: boolean; wait?: boolean }): Cmd =>
+        ['gcp', 'firestore', 'create', db, ...flags(o)],
+    delete: (db: string, o: { force?: boolean }): Cmd => ['gcp', 'firestore', 'delete', db, ...flags(o), YES],
+    scan: (db: string, o: { collection: string; limit?: number }): Cmd => ['gcp', 'firestore', 'scan', db, ...flags(o)],
+    putItem: (db: string, collection: string, id: string, item: string): Cmd =>
+        ['gcp', 'firestore', 'put-item', db, '--collection', collection, '--id', id, '--item', item],
+    deleteItem: (db: string, collection: string, id: string): Cmd =>
+        ['gcp', 'firestore', 'delete-item', db, '--collection', collection, '--id', id],
 };
 
 export const rds = {
@@ -137,6 +186,20 @@ export const rds = {
         ['aws', 'rds', 'delete', id, ...flags(o), YES],
 };
 
+/** clover gcp sql: Cloud SQL instances. */
+export const cloudSql = {
+    list: (): Cmd => ['gcp', 'sql', 'list'],
+    get: (id: string): Cmd => ['gcp', 'sql', 'get', id],
+    create: (id: string, o: {
+        'database-version'?: string; tier?: string; storage?: number; password: string; public?: boolean;
+        'deletion-protection'?: boolean; labels?: string[]; wait?: boolean;
+    }): Cmd => ['gcp', 'sql', 'create', id, ...flags(o)],
+    start: (id: string): Cmd => ['gcp', 'sql', 'start', id],
+    stop: (id: string): Cmd => ['gcp', 'sql', 'stop', id],
+    reboot: (id: string): Cmd => ['gcp', 'sql', 'reboot', id],
+    delete: (id: string, o: { force?: boolean }): Cmd => ['gcp', 'sql', 'delete', id, ...flags(o), YES],
+};
+
 export const lambda = {
     list: (): Cmd => ['aws', 'lambda', 'list'],
     get: (name: string): Cmd => ['aws', 'lambda', 'get', name],
@@ -152,6 +215,22 @@ export const lambda = {
     invoke: (name: string, o: { payload?: string; logs?: boolean }): Cmd => ['aws', 'lambda', 'invoke', name, ...flags(o)],
 };
 
+/** clover gcp functions: Cloud Functions (2nd gen) in the CLI's default region. */
+export const cloudFunctions = {
+    list: (): Cmd => ['gcp', 'functions', 'list'],
+    get: (name: string): Cmd => ['gcp', 'functions', 'get', name],
+    create: (name: string, o: {
+        source: string; runtime?: string; 'entry-point'?: string; memory?: number; timeout?: number;
+        description?: string; env?: string[]; labels?: string[]; wait?: boolean;
+    }): Cmd => ['gcp', 'functions', 'create', name, ...flags(o)],
+    update: (name: string, o: {
+        source?: string; runtime?: string; 'entry-point'?: string; memory?: number; timeout?: number;
+        env?: string[]; 'remove-env'?: string[]; wait?: boolean;
+    }): Cmd => ['gcp', 'functions', 'update', name, ...flags(o)],
+    delete: (name: string): Cmd => ['gcp', 'functions', 'delete', name, YES],
+    invoke: (name: string, o: { payload?: string }): Cmd => ['gcp', 'functions', 'invoke', name, ...flags(o)],
+};
+
 export const ec2 = {
     list: (): Cmd => ['aws', 'ec2', 'list'],
     get: (id: string): Cmd => ['aws', 'ec2', 'get', id],
@@ -165,9 +244,27 @@ export const ec2 = {
     delete: (id: string, o: { force?: boolean }): Cmd => ['aws', 'ec2', 'delete', id, ...flags(o), YES],
 };
 
+/** clover gcp compute: instances are addressed by name and --zone. */
+export const gce = {
+    list: (): Cmd => ['gcp', 'compute', 'list'],
+    create: (o: {
+        name?: string; 'machine-type'?: string; image?: string; 'disk-size'?: number; 'startup-script'?: string;
+        'public-ip'?: boolean; labels?: string[]; wait?: boolean;
+    }): Cmd => ['gcp', 'compute', 'create', ...flags(o)],
+    start: (name: string, zone: string): Cmd => ['gcp', 'compute', 'start', name, '--zone', zone],
+    stop: (name: string, zone: string): Cmd => ['gcp', 'compute', 'stop', name, '--zone', zone],
+    reboot: (name: string, zone: string): Cmd => ['gcp', 'compute', 'reboot', name, '--zone', zone],
+    delete: (name: string, zone: string, o: { force?: boolean }): Cmd => ['gcp', 'compute', 'delete', name, '--zone', zone, ...flags(o), YES],
+};
+
 export const iam = {
     policies: (): Cmd => ['aws', 'iam', 'policies'],
     check: (): Cmd => ['aws', 'iam', 'check'],
+};
+
+export const gcpIam = {
+    policies: (): Cmd => ['gcp', 'iam', 'policies'],
+    check: (): Cmd => ['gcp', 'iam', 'check'],
 };
 
 export const REGIONS = [
