@@ -97,6 +97,12 @@ export interface Instance {
     privateIp?: string; imageId?: string; keyName?: string; launched?: string; tags?: Tags;
 }
 
+/** What `clover gcp compute list` prints. */
+export interface GceInstance {
+    name: string; zone?: string; machineType?: string; status?: string; publicIp?: string; privateIp?: string;
+    created?: string; labels?: Tags;
+}
+
 // ---- Commands ----
 
 /** Deletes are confirmed in the app, then run with --yes (the CLI requires it without a terminal). */
@@ -217,6 +223,19 @@ export const ec2 = {
     stop: (id: string): Cmd => ['aws', 'ec2', 'stop', id],
     reboot: (id: string): Cmd => ['aws', 'ec2', 'reboot', id],
     delete: (id: string, o: { force?: boolean }): Cmd => ['aws', 'ec2', 'delete', id, ...flags(o), YES],
+};
+
+/** clover gcp compute: instances are addressed by name and --zone. */
+export const gce = {
+    list: (): Cmd => ['gcp', 'compute', 'list'],
+    create: (o: {
+        name?: string; 'machine-type'?: string; image?: string; 'disk-size'?: number; 'startup-script'?: string;
+        'public-ip'?: boolean; labels?: string[]; wait?: boolean;
+    }): Cmd => ['gcp', 'compute', 'create', ...flags(o)],
+    start: (name: string, zone: string): Cmd => ['gcp', 'compute', 'start', name, '--zone', zone],
+    stop: (name: string, zone: string): Cmd => ['gcp', 'compute', 'stop', name, '--zone', zone],
+    reboot: (name: string, zone: string): Cmd => ['gcp', 'compute', 'reboot', name, '--zone', zone],
+    delete: (name: string, zone: string, o: { force?: boolean }): Cmd => ['gcp', 'compute', 'delete', name, '--zone', zone, ...flags(o), YES],
 };
 
 export const iam = {
