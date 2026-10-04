@@ -27,6 +27,7 @@ npm run dev      # Vite + Electron with hot reload
 npm run build    # typecheck, then build dist/ (UI) and dist-electron/ (main + preload)
 npm start        # run the built app
 npm run lint
+npm test         # build the CLI first: the GCP tests check every command against it
 ```
 
 The CLI comes from `../cli` (`"@clover-cli/cli": "file:../cli"`), so rebuild it
