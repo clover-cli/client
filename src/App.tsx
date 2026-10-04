@@ -15,13 +15,14 @@ import { Archive, Database, House, Key, Leaf, LogOut, Server, Table, Terminal, Z
 
 export type Page = 'overview' | 'tables' | 'storage' | 'functions' | 'databases' | 'compute' | 'permissions' | 'activity';
 
-const NAV: { page: Page; label: string; icon: LucideIcon; service?: string }[] = [
+/** `aws` / `gcp`: the service behind the page on that provider. Pages without one for the session's provider are hidden. */
+const NAV: { page: Page; label: string; icon: LucideIcon; aws?: string; gcp?: string }[] = [
     { page: 'overview', label: 'Overview', icon: House },
-    { page: 'tables', label: 'Table Editor', icon: Table, service: 'DynamoDB' },
-    { page: 'storage', label: 'Storage', icon: Archive, service: 'S3' },
-    { page: 'functions', label: 'Functions', icon: Zap, service: 'Lambda' },
-    { page: 'databases', label: 'Databases', icon: Database, service: 'RDS' },
-    { page: 'compute', label: 'Compute', icon: Server, service: 'EC2' },
+    { page: 'tables', label: 'Table Editor', icon: Table, aws: 'DynamoDB' },
+    { page: 'storage', label: 'Storage', icon: Archive, aws: 'S3' },
+    { page: 'functions', label: 'Functions', icon: Zap, aws: 'Lambda' },
+    { page: 'databases', label: 'Databases', icon: Database, aws: 'RDS' },
+    { page: 'compute', label: 'Compute', icon: Server, aws: 'EC2' },
 ];
 
 export default function App() {
@@ -54,6 +55,7 @@ export default function App() {
     }
 
     const { identity } = session;
+    const provider = session.provider ?? 'aws';
     const runningCount = activity.filter((a) => a.status === 'running').length;
 
     async function changeRegion(region: string) {
@@ -76,20 +78,22 @@ export default function App() {
                     <span>Clover</span>
                 </div>
                 <nav>
-                    {NAV.map((item) => (
+                    {NAV.filter((item) => !item.aws || item[provider]).map((item) => (
                         <button key={item.page} className={`nav-item ${page === item.page ? 'active' : ''}`} onClick={() => setPage(item.page)}>
                             <item.icon size={16} />
                             <span>{item.label}</span>
-                            {item.service && <small>{item.service}</small>}
+                            {item[provider] && <small>{item[provider]}</small>}
                         </button>
                     ))}
                 </nav>
                 <div className="sidebar-bottom">
-                    <button className={`nav-item ${page === 'permissions' ? 'active' : ''}`} onClick={() => setPage('permissions')}>
-                        <Key size={16} />
-                        <span>Permissions</span>
-                        <small>IAM</small>
-                    </button>
+                    {provider === 'aws' && (
+                        <button className={`nav-item ${page === 'permissions' ? 'active' : ''}`} onClick={() => setPage('permissions')}>
+                            <Key size={16} />
+                            <span>Permissions</span>
+                            <small>IAM</small>
+                        </button>
+                    )}
                     <button className={`nav-item ${page === 'activity' ? 'active' : ''}`} onClick={() => setPage('activity')}>
                         <Terminal size={16} />
                         <span>Activity</span>
@@ -104,19 +108,24 @@ export default function App() {
             <div className="main">
                 <header className="topbar">
                     <div className="account">
-                        <span className="muted">Account</span>
+                        <span className="muted">{provider === 'gcp' ? 'Project' : 'Account'}</span>
                         <strong>{identity.account}</strong>
                         <span className="muted arn" title={identity.arn}>{identity.arn.split(':').pop()}</span>
                     </div>
                     <div className="row">
                         {regionError && <span className="error-text" title={regionError}>Region change failed</span>}
-                        <label className="region">
-                            {regionBusy ? <Spinner /> : <span className="muted">Region</span>}
-                            <select value={identity.region} disabled={regionBusy} onChange={(e) => void changeRegion(e.target.value)}>
-                                {(REGIONS.includes(identity.region) ? REGIONS : [identity.region, ...REGIONS]).map((r) => <option key={r}>{r}</option>)}
-                            </select>
-                        </label>
-                        <Button variant="ghost" icon={LogOut} title={`Forget the credentials (${session.accessKeyHint}), like clover aws logout`}
+                        {provider === 'aws' ? (
+                            <label className="region">
+                                {regionBusy ? <Spinner /> : <span className="muted">Region</span>}
+                                <select value={identity.region} disabled={regionBusy} onChange={(e) => void changeRegion(e.target.value)}>
+                                    {(REGIONS.includes(identity.region) ? REGIONS : [identity.region, ...REGIONS]).map((r) => <option key={r}>{r}</option>)}
+                                </select>
+                            </label>
+                        ) : (
+                            // ponytail: GCP commands use the CLI's default region; add a picker (passing --region) when someone needs another.
+                            <span className="muted">Region {identity.region}</span>
+                        )}
+                        <Button variant="ghost" icon={LogOut} title={`Forget the credentials (${session.accessKeyHint}), like clover ${provider} logout`}
                             onClick={() => void window.clover.session.disconnect().then(setSession)}>
                             Disconnect
                         </Button>

@@ -2,8 +2,8 @@
 
 ## The rule: the client is an extension of the CLI
 
-The client does nothing the CLI can't do. It never uses the AWS SDK. Every action is **one
-`clover aws ...` command** that it runs and reads (`--output json`):
+The client does nothing the CLI can't do. It never uses a cloud SDK. Every action is **one
+`clover aws ...` or `clover gcp ...` command** that it runs and reads (`--output json`):
 
 - Every form shows the exact equivalent command as you fill it in, ready to copy into a terminal or script.
 - **Activity** lists every command the app ran this session, with exit codes and errors.
@@ -17,7 +17,7 @@ The client does nothing the CLI can't do. It never uses the AWS SDK. Every actio
 | Databases | `clover aws rds list/get/create/start/stop/reboot/delete` |
 | Compute | `clover aws ec2 list/create/start/stop/reboot/delete` |
 | Permissions | `clover aws iam policies/check` |
-| Connect / region | `clover aws whoami` |
+| Connect / region | `clover aws whoami`, `clover gcp whoami` |
 
 ## Development
 
@@ -42,12 +42,15 @@ CLOVER_CLI=/path/to/cli/dist/index.js npm run dev  # an entry script
 
 ## Credentials
 
-The client follows the CLI's model: credentials are the standard `AWS_*` environment variables,
-and nothing is written to disk.
+The client follows the CLI's model: credentials are the standard `AWS_*` environment variables, or
+`GOOGLE_CLOUD_PROJECT` (plus an optional `GOOGLE_APPLICATION_CREDENTIALS` key file) for GCP, and
+nothing is written to disk. One provider is connected at a time.
 
-- Start the app from a shell with credentials loaded (e.g. after `eval "$(clover aws login)"`) and it uses them.
-- Or enter an access key in the app. It's checked with `clover aws whoami` and kept in the main
-  process's memory until you disconnect or quit. The UI never gets the secret back.
+- Start the app from a shell with credentials loaded (e.g. after `eval "$(clover aws login)"` or
+  `eval "$(clover gcp login)"`) and it uses them. AWS wins when both are set.
+- Or enter an access key, or a GCP project, in the app. It's checked with `clover aws whoami` /
+  `clover gcp whoami` and kept in the main process's memory until you disconnect or quit. The UI never
+  gets the secret back.
 
 Each CLI run gets the credentials as environment variables, never as arguments.
 
