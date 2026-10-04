@@ -72,10 +72,12 @@ export interface Table {
 }
 export type Item = Record<string, unknown>;
 
+/** An RDS database, or a Cloud SQL instance (which has `tier`, `activation`, `ip`, `connectionName`...). */
 export interface Database {
     id: string; engine?: string; version?: string; class?: string; status?: string; storageGb?: number;
     endpoint?: string; port?: number; username?: string; database?: string; multiAz?: boolean;
     public?: boolean; deletionProtection?: boolean; passwordSecret?: string; arn?: string;
+    tier?: string; activation?: string; ip?: string; connectionName?: string; region?: string; labels?: Tags;
 }
 
 /** A Lambda function, or a Cloud Function (which has `memory` like "256M", `updated`, `entryPoint`, `uri`...). */
@@ -157,6 +159,20 @@ export const rds = {
     reboot: (id: string): Cmd => ['aws', 'rds', 'reboot', id],
     delete: (id: string, o: { 'final-snapshot'?: string; force?: boolean }): Cmd =>
         ['aws', 'rds', 'delete', id, ...flags(o), YES],
+};
+
+/** clover gcp sql: Cloud SQL instances. */
+export const cloudSql = {
+    list: (): Cmd => ['gcp', 'sql', 'list'],
+    get: (id: string): Cmd => ['gcp', 'sql', 'get', id],
+    create: (id: string, o: {
+        'database-version'?: string; tier?: string; storage?: number; password: string; public?: boolean;
+        'deletion-protection'?: boolean; labels?: string[]; wait?: boolean;
+    }): Cmd => ['gcp', 'sql', 'create', id, ...flags(o)],
+    start: (id: string): Cmd => ['gcp', 'sql', 'start', id],
+    stop: (id: string): Cmd => ['gcp', 'sql', 'stop', id],
+    reboot: (id: string): Cmd => ['gcp', 'sql', 'reboot', id],
+    delete: (id: string, o: { force?: boolean }): Cmd => ['gcp', 'sql', 'delete', id, ...flags(o), YES],
 };
 
 export const lambda = {

@@ -21,7 +21,7 @@ const NAV: { page: Page; label: string; icon: LucideIcon; aws?: string; gcp?: st
     { page: 'tables', label: 'Table Editor', icon: Table, aws: 'DynamoDB' },
     { page: 'storage', label: 'Storage', icon: Archive, aws: 'S3', gcp: 'Cloud Storage' },
     { page: 'functions', label: 'Functions', icon: Zap, aws: 'Lambda', gcp: 'Cloud Functions' },
-    { page: 'databases', label: 'Databases', icon: Database, aws: 'RDS' },
+    { page: 'databases', label: 'Databases', icon: Database, aws: 'RDS', gcp: 'Cloud SQL' },
     { page: 'compute', label: 'Compute', icon: Server, aws: 'EC2' },
 ];
 
@@ -138,7 +138,7 @@ export default function App() {
                     {page === 'tables' && <Tables />}
                     {page === 'storage' && <Storage gcp={provider === 'gcp'} />}
                     {page === 'functions' && <Functions gcp={provider === 'gcp'} />}
-                    {page === 'databases' && <Databases />}
+                    {page === 'databases' && <Databases gcp={provider === 'gcp'} />}
                     {page === 'compute' && <Compute />}
                     {page === 'permissions' && <Permissions session={session} />}
                     {page === 'activity' && <Activity activity={activity} onClear={() => setActivity((l) => l.filter((a) => a.status === 'running'))} />}
