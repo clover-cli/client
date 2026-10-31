@@ -12,6 +12,13 @@ const TYPES = ['t3.micro', 't3.small', 't3.medium', 't3.large', 't4g.micro', 't4
 const GCP_IMAGES = ['debian-12', 'debian-12-arm64', 'ubuntu-24.04', 'ubuntu-24.04-arm64'];
 const GCP_TYPES = ['e2-micro', 'e2-small', 'e2-medium', 'e2-standard-2', 't2a-standard-1', 't2a-standard-2'];
 
+/** Like the CLI's uptime column. EC2 resets the launch time on every start, so it's the time since the last start. */
+function uptime({ state, launched }: Instance): string {
+    if (state !== 'running' || !launched) return '—';
+    const hours = Math.floor((Date.now() - Date.parse(launched)) / 3_600_000);
+    return `${Math.floor(hours / 24)}d ${hours % 24}h`;
+}
+
 /** A Compute Engine instance in EC2's shape, so the table and actions are shared. TERMINATED is GCP's "stopped". */
 function fromGce(i: GceInstance): Instance {
     const state = i.status?.toLowerCase();
@@ -169,6 +176,7 @@ export default function Compute({ gcp }: { gcp: boolean }) {
                     { key: 'state', label: 'State', render: (i) => <Status value={i.state} /> },
                     { key: 'publicIp', label: 'Public IP' },
                     { key: 'az', label: 'Zone' },
+                    ...(gcp ? [] : [{ key: 'uptime', label: 'Uptime', render: uptime }]),
                 ]} actions={(i) => i.state === 'terminated' ? null : (
                     <span className="row">
                         {i.state === 'stopped'
