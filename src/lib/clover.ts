@@ -242,6 +242,10 @@ export const ec2 = {
         image?: string; 'instance-type'?: string; count?: number; name?: string; 'key-name'?: string;
         'volume-size'?: number; 'public-ip'?: boolean; 'user-data'?: string; tags?: string[]; wait?: boolean;
     }): Cmd => ['aws', 'ec2', 'create', ...flags(o)],
+    update: (id: string, o: {
+        'instance-type'?: string; restart?: boolean; name?: string; tags?: string[]; 'remove-tags'?: string[];
+        'termination-protection'?: boolean;
+    }): Cmd => ['aws', 'ec2', 'update', id, ...flags(o)],
     start: (id: string): Cmd => ['aws', 'ec2', 'start', id],
     stop: (id: string): Cmd => ['aws', 'ec2', 'stop', id],
     reboot: (id: string): Cmd => ['aws', 'ec2', 'reboot', id],

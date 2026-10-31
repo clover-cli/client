@@ -80,40 +80,52 @@ function CreateInstance({ gcp, onClose, onDone }: { gcp: boolean; onClose: () =>
     );
 }
 
-/** clover gcp compute update: only what's changed is sent. */
-function EditInstance({ instance, onClose, onDone }: { instance: Instance; onClose: () => void; onDone: () => void }) {
+/** clover aws ec2 update / clover gcp compute update: only what's changed is sent. */
+function EditInstance({ gcp, instance, onClose, onDone }: { gcp: boolean; instance: Instance; onClose: () => void; onDone: () => void }) {
     const [type, setType] = useState(instance.type ?? '');
     const [restart, setRestart] = useState(false);
+    const [name, setName] = useState(instance.name ?? '');
     const [labels, setLabels] = useState('');
     const [removeLabels, setRemoveLabels] = useState('');
     const [protect, setProtect] = useState('');
 
     const resize = !!type && type !== instance.type;
-    const cmd = gce.update(instance.id, instance.az!, {
-        'machine-type': resize ? type : undefined, restart: resize && restart || undefined,
-        labels: lines(labels), 'remove-labels': lines(removeLabels),
-        'deletion-protection': protect === '' ? undefined : protect === 'on',
-    });
+    const rename = !gcp && name !== (instance.name ?? '');
+    const o = { restart: resize && restart || undefined };
+    const protection = protect === '' ? undefined : protect === 'on';
+    const cmd = gcp
+        ? gce.update(instance.id, instance.az!, {
+            ...o, 'machine-type': resize ? type : undefined,
+            labels: lines(labels), 'remove-labels': lines(removeLabels), 'deletion-protection': protection,
+        })
+        : ec2.update(instance.id, {
+            ...o, 'instance-type': resize ? type : undefined, name: rename ? name : undefined,
+            tags: lines(labels), 'remove-tags': lines(removeLabels), 'termination-protection': protection,
+        });
     const running = instance.state !== 'stopped';
+    const noun = gcp ? 'labels' : 'tags';
     return (
-        <ActionModal wide title={`Edit ${instance.id}`} submitLabel="Save" cmd={cmd}
-            valid={(resize || !!labels.trim() || !!removeLabels.trim() || protect !== '') && !(resize && running && !restart)}
+        <ActionModal wide title={`Edit ${instance.name ?? instance.id}`} submitLabel="Save" cmd={cmd}
+            valid={(resize || rename || !!labels.trim() || !!removeLabels.trim() || protect !== '') && !(resize && running && !restart)}
             onClose={onClose} onDone={onDone}>
-            <Field label="Machine type" hint={running ? 'Resizing needs the instance stopped, or a restart' : undefined}>
-                <select value={type} onChange={(e) => setType(e.target.value)}>
-                    {[...new Set([instance.type ?? '', ...GCP_TYPES])].filter(Boolean).map((x) => <option key={x}>{x}</option>)}
-                </select>
-            </Field>
+            <div className="field-row">
+                {!gcp && <Field label="Name"><input value={name} onChange={(e) => setName(e.target.value)} spellCheck={false} /></Field>}
+                <Field label={gcp ? 'Machine type' : 'Instance type'} hint={running ? 'Resizing needs the instance stopped, or a restart' : undefined}>
+                    <select value={type} onChange={(e) => setType(e.target.value)}>
+                        {[...new Set([instance.type ?? '', ...(gcp ? GCP_TYPES : TYPES)])].filter(Boolean).map((x) => <option key={x}>{x}</option>)}
+                    </select>
+                </Field>
+            </div>
             {resize && running && <Check label="Stop, resize and start again (--restart)" checked={restart} onChange={setRestart} />}
             <div className="field-row">
-                <Field label="Set labels" hint="One Key=Value per line; the others are kept">
+                <Field label={`Set ${noun}`} hint="One Key=Value per line; the others are kept">
                     <textarea rows={2} value={labels} onChange={(e) => setLabels(e.target.value)} placeholder="env=prod" spellCheck={false} />
                 </Field>
-                <Field label="Remove labels" hint="One key per line">
+                <Field label={`Remove ${noun}`} hint="One key per line">
                     <textarea rows={2} value={removeLabels} onChange={(e) => setRemoveLabels(e.target.value)} spellCheck={false} />
                 </Field>
             </div>
-            <Field label="Deletion protection">
+            <Field label={gcp ? 'Deletion protection' : 'Termination protection'}>
                 <select value={protect} onChange={(e) => setProtect(e.target.value)}>
                     <option value="">Unchanged</option>
                     <option value="on">On</option>
@@ -162,14 +174,14 @@ export default function Compute({ gcp }: { gcp: boolean }) {
                             ? <Button variant="ghost" icon={Play} title="Start" onClick={() => setPower({ action: 'start', id: i.id, zone: i.az })} />
                             : <Button variant="ghost" icon={Square} title="Stop" onClick={() => setPower({ action: 'stop', id: i.id, zone: i.az })} />}
                         <Button variant="ghost" icon={RefreshCw} title="Reboot" onClick={() => setPower({ action: 'reboot', id: i.id, zone: i.az })} />
-                        {gcp && <Button variant="ghost" icon={Pencil} title="Edit" onClick={() => setEditing(i)} />}
+                        <Button variant="ghost" icon={Pencil} title="Edit" onClick={() => setEditing(i)} />
                         <Button variant="ghost" icon={Trash2} title={gcp ? 'Delete' : 'Terminate'} onClick={() => { setForce(false); setDeleting(i); }} />
                     </span>
                 )} />
             )}
 
             {creating && <CreateInstance gcp={gcp} onClose={() => setCreating(false)} onDone={instances.reload} />}
-            {editing && <EditInstance instance={editing} onClose={() => setEditing(undefined)} onDone={instances.reload} />}
+            {editing && <EditInstance gcp={gcp} instance={editing} onClose={() => setEditing(undefined)} onDone={instances.reload} />}
             {details && <Modal wide title={details.name ?? details.id} onClose={() => setDetails(undefined)}><KeyValues value={details} /></Modal>}
             {power && (
                 <ActionModal title={`${power.action} ${power.id}`} submitLabel={power.action[0].toUpperCase() + power.action.slice(1)}
