@@ -36,6 +36,7 @@ export default function App() {
     const [regionBusy, setRegionBusy] = useState(false);
     const [regionError, setRegionError] = useState<string>();
     const projectList = useCli<Project[]>(session?.connected && session.provider !== 'gcp' ? projects.list() : null);
+    const currentProject = projectList.data?.find((p) => p.current)?.name;
 
     useEffect(() => {
         void window.clover.session.get().then(setSession);
@@ -115,6 +116,11 @@ export default function App() {
                         <span className="muted arn" title={identity.arn}>{identity.arn.split(':').pop()}</span>
                     </div>
                     <div className="row">
+                        {currentProject && (
+                            <button className="link" title="Every screen shows only this project's resources" onClick={() => setPage('projects')}>
+                                Project <strong>{currentProject}</strong>
+                            </button>
+                        )}
                         {regionError && <span className="error-text" title={regionError}>Region change failed</span>}
                         {provider === 'aws' ? (
                             <label className="region">
@@ -134,8 +140,8 @@ export default function App() {
                     </div>
                 </header>
 
-                {/* Remount the page when the region changes so everything is listed again. */}
-                <main className="content" key={identity.region}>
+                {/* Remount the page when the region or project changes so everything is listed again. */}
+                <main className="content" key={`${identity.region}/${currentProject ?? ''}`}>
                     {page === 'overview' && <Overview session={session} cli={cli} onNavigate={setPage} />}
                     {page === 'projects' && <Projects onChange={projectList.reload} />}
                     {page === 'tables' && <Tables gcp={provider === 'gcp'} />}
