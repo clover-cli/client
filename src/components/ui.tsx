@@ -79,6 +79,12 @@ export function Status({ value }: { value?: string }) {
     return <span className={`status status-${tone}`}><i />{value}</span>;
 }
 
+/** A row of small labels, e.g. counts per type. */
+export function Chips({ items }: { items: string[] }) {
+    if (!items.length) return null;
+    return <div className="chips">{items.map((x) => <span key={x} className="chip">{x}</span>)}</div>;
+}
+
 export function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
     const [copied, setCopied] = useState(false);
     return (

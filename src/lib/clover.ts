@@ -81,6 +81,8 @@ export interface Database {
     public?: boolean; deletionProtection?: boolean; passwordSecret?: string; arn?: string;
     tier?: string; activation?: string; ip?: string; connectionName?: string; region?: string; labels?: Tags;
 }
+/** What `clover aws rds summary` prints: one row per engine and class. */
+export interface RdsClassCount { engine?: string; class?: string; count: number; available: number; storageGb: number }
 
 /** A Lambda function, or a Cloud Function (which has `memory` like "256M", `updated`, `entryPoint`, `uri`...). */
 export interface LambdaFunction {
@@ -112,6 +114,8 @@ export interface Instance {
     id: string; name?: string; type?: string; state?: string; az?: string; publicIp?: string;
     privateIp?: string; imageId?: string; keyName?: string; launched?: string; tags?: Tags;
 }
+/** What `clover aws ec2 summary` prints: one row per instance type, terminated instances left out. */
+export interface Ec2TypeCount { type: string; count: number; running: number; vcpus?: number; memoryGib?: number }
 
 /** What `clover gcp compute list` prints. */
 export interface GceInstance {
@@ -186,6 +190,7 @@ export const firestore = {
 export const rds = {
     list: (): Cmd => ['aws', 'rds', 'list'],
     get: (id: string): Cmd => ['aws', 'rds', 'get', id],
+    summary: (): Cmd => ['aws', 'rds', 'summary'],
     create: (id: string, o: {
         engine?: string; 'engine-version'?: string; 'instance-class'?: string; storage?: number; username?: string;
         password?: string; database?: string; public?: boolean; 'multi-az'?: boolean; 'backup-retention'?: number;
@@ -249,6 +254,7 @@ export const cloudFunctions = {
 export const ec2 = {
     list: (o: { state?: string[]; tag?: string[] } = {}): Cmd => ['aws', 'ec2', 'list', ...flags(o)],
     get: (id: string): Cmd => ['aws', 'ec2', 'get', id],
+    summary: (): Cmd => ['aws', 'ec2', 'summary'],
     create: (o: {
         image?: string; 'instance-type'?: string; count?: number; name?: string; 'key-name'?: string;
         'volume-size'?: number; 'public-ip'?: boolean; 'user-data'?: string; tags?: string[]; wait?: boolean;
