@@ -25,7 +25,7 @@ Run all three before you finish.
 
 ## Rules
 
-- The client is an extension of the CLI. It never uses a cloud SDK. Every action is one `clover aws ...` or `clover gcp ...` command.
+- The client is an extension of the CLI. It never uses a cloud SDK. Every action is one `clover aws ...`, `clover gcp ...` or `clover project ...` command.
 - A feature goes into the CLI first, then into a builder in `src/lib/clover.ts`, then into a screen.
 - Builders use the CLI's own kebab-case option names and `flags()`. Unset options are left out.
 - Writes go through `ActionModal`, so the exact command is shown and copyable. Reads go through `useCli()`.

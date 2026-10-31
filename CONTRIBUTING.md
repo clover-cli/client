@@ -3,7 +3,7 @@
 ## The rule: the client is an extension of the CLI
 
 The client does nothing the CLI can't do. It never uses a cloud SDK. Every action is **one
-`clover aws ...` or `clover gcp ...` command** that it runs and reads (`--output json`):
+`clover aws ...`, `clover gcp ...` or `clover project ...` command** that it runs and reads (`--output json`):
 
 - Every form shows the exact equivalent command as you fill it in, ready to copy into a terminal or script.
 - **Activity** lists every command the app ran this session, with exit codes and errors.
@@ -18,6 +18,7 @@ The client does nothing the CLI can't do. It never uses a cloud SDK. Every actio
 | Compute | `clover aws ec2 list/create/start/stop/reboot/delete` | `clover gcp compute` (same actions, plus `update`) |
 | Permissions | `clover aws iam policies/check` | `clover gcp iam policies/check` |
 | Connect / region | `clover aws whoami` | `clover gcp whoami` |
+| Projects (AWS) | `clover project list/get/create/delete/use/add/overview` | — |
 
 ## Development
 
