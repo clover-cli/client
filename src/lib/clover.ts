@@ -110,6 +110,9 @@ export interface CommandCheck { service: string; command: string; allowed: boole
 /** What `clover gcp iam policies` prints: the project roles granted directly. */
 export interface GcpRole { role: string }
 
+/** What `clover aws cost monthly` prints: one row per month, oldest first. */
+export interface MonthlyCost { month: string; amount: number; unit?: string }
+
 export interface Instance {
     id: string; name?: string; type?: string; state?: string; az?: string; publicIp?: string;
     privateIp?: string; imageId?: string; keyName?: string; launched?: string; tags?: Tags;
@@ -300,6 +303,10 @@ export const projects = {
 export const gcpIam = {
     policies: (): Cmd => ['gcp', 'iam', 'policies'],
     check: (): Cmd => ['gcp', 'iam', 'check'],
+};
+
+export const cost = {
+    monthly: (o: { months?: number }): Cmd => ['aws', 'cost', 'monthly', ...flags(o)],
 };
 
 export const REGIONS = [

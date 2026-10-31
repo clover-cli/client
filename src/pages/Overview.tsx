@@ -1,7 +1,8 @@
 import type { CliInfo, Session } from '../../shared/types';
 import type { Page } from '../App';
-import { CommandPreview, PageHeader, Spinner } from '../components/ui';
-import { cloudFunctions, cloudSql, dynamodb, ec2, firestore, gce, gcs, lambda, rds, s3, type Cmd } from '../lib/clover';
+import { useState } from 'react';
+import { CommandPreview, ErrorBox, PageHeader, Spinner } from '../components/ui';
+import { cloudFunctions, cloudSql, cost, dynamodb, ec2, firestore, gce, gcs, lambda, rds, s3, type Cmd, type MonthlyCost } from '../lib/clover';
 import { useCli } from '../lib/hooks';
 import { Archive, Database, Server, Table, Zap, type LucideIcon } from 'lucide-react';
 
@@ -29,6 +30,39 @@ function ServiceCard({ title, service, icon: Icon, cmd, noun, onOpen }: {
     );
 }
 
+const money = (amount: number, unit = 'USD') => new Intl.NumberFormat(undefined, { style: 'currency', currency: unit }).format(amount);
+
+/** The AWS bill per month, from Cost Explorer (the whole organization from its management account). */
+function Billing() {
+    const [months, setMonths] = useState(6);
+    const cmd = cost.monthly({ months });
+    const bill = useCli<MonthlyCost[]>(cmd);
+    const rows = [...bill.data ?? []].reverse();
+    return (
+        <div className="card">
+            <div className="row spread">
+                <h3>Billing</h3>
+                <select value={months} onChange={(e) => setMonths(Number(e.target.value))} title="Months to show (--months)">
+                    {[3, 6, 12].map((n) => <option key={n} value={n}>Last {n} months</option>)}
+                </select>
+            </div>
+            <ErrorBox error={bill.error} />
+            {bill.loading && !bill.data && <Spinner />}
+            {rows.length > 0 && (
+                <dl className="kv">
+                    {rows.map((m, i) => (
+                        <div key={m.month}>
+                            <dt>{m.month}{i === 0 && <span className="muted"> · so far</span>}</dt>
+                            <dd>{money(m.amount, m.unit)}</dd>
+                        </div>
+                    ))}
+                </dl>
+            )}
+            <CommandPreview cmd={cmd} />
+        </div>
+    );
+}
+
 export default function Overview({ session, cli, onNavigate }: { session: Session; cli?: CliInfo; onNavigate: (p: Page) => void }) {
     const identity = session.identity!;
     const gcp = session.provider === 'gcp';
@@ -43,6 +77,8 @@ export default function Overview({ session, cli, onNavigate }: { session: Sessio
                 <ServiceCard title="Databases" service={gcp ? 'Cloud SQL' : 'RDS'} icon={Database} cmd={gcp ? cloudSql.list() : rds.list()} noun="databases" onOpen={() => onNavigate('databases')} />
                 <ServiceCard title="Compute" service={gcp ? 'Compute Engine' : 'EC2'} icon={Server} cmd={gcp ? gce.list() : ec2.list()} noun="instances" onOpen={() => onNavigate('compute')} />
             </section>
+
+            {!gcp && <section className="section-gap"><Billing /></section>}
 
             <section className="grid-2">
                 <div className="card">
