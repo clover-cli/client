@@ -127,7 +127,12 @@ function EditInstance({ instance, onClose, onDone }: { instance: Instance; onClo
 type Power = { action: 'start' | 'stop' | 'reboot'; id: string; zone?: string };
 
 export default function Compute({ gcp }: { gcp: boolean }) {
-    const query = useCli<Instance[] | GceInstance[]>(gcp ? gce.list() : ec2.list());
+    const [state, setState] = useState('');
+    const [tag, setTag] = useState('');
+    const filter = { state: state ? [gcp && state === 'stopped' ? 'terminated' : state] : [], tags: tag ? [tag] : [] };
+    const query = useCli<Instance[] | GceInstance[]>(gcp
+        ? gce.list({ state: filter.state, label: filter.tags })
+        : ec2.list({ state: filter.state, tag: filter.tags }));
     const instances = { ...query, data: gcp ? (query.data as GceInstance[] | undefined)?.map(fromGce) : query.data as Instance[] | undefined };
     // GCP instances are listed from every zone: act on the one they're in.
     const powerCmd = (p: Power): Cmd => gcp ? gce[p.action](p.id, p.zone!) : ec2[p.action](p.id);
@@ -142,12 +147,20 @@ export default function Compute({ gcp }: { gcp: boolean }) {
         <div className="page">
             <PageHeader title="Compute" subtitle={`${gcp ? 'Compute Engine' : 'EC2'}: virtual servers`}
                 actions={<>
+                    <form onSubmit={(e) => { e.preventDefault(); setTag((new FormData(e.currentTarget).get('tag') as string).trim()); }}>
+                        <input name="tag" defaultValue={tag} placeholder={`${gcp ? 'Label' : 'Tag'}, e.g. env=dev`} title="Press Enter to filter" spellCheck={false} />
+                    </form>
+                    <select value={state} onChange={(e) => setState(e.target.value)} title="Only instances in this state (--state)">
+                        <option value="">All states</option>
+                        <option value="running">Running</option>
+                        <option value="stopped">Stopped</option>
+                    </select>
                     <Button icon={RotateCw} onClick={instances.reload} busy={instances.loading}>Refresh</Button>
                     <Button variant="primary" icon={Plus} onClick={() => setCreating(true)}>New instance</Button>
                 </>} />
             <ErrorBox error={instances.error} />
             {instances.loading && !instances.data && <Spinner />}
-            {instances.data?.length === 0 && <Empty icon={Server} title="No instances">Launch a server with a startup script in one step.</Empty>}
+            {instances.data?.length === 0 && <Empty icon={Server} title={state || tag ? 'No matching instances' : 'No instances'}>Launch a server with a startup script in one step.</Empty>}
             {!!instances.data?.length && (
                 <DataTable rows={instances.data} rowKey={(i) => i.id} onRowClick={setDetails} columns={[
                     { key: 'name', label: 'Name' },

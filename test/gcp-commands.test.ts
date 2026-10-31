@@ -44,7 +44,7 @@ const COMMANDS: Record<string, Cmd> = {
     'sql reboot': cloudSql.reboot('db'),
     'sql delete': cloudSql.delete('db', { force: true }),
 
-    'compute list': gce.list(),
+    'compute list': gce.list({ state: ['running', 'terminated'], label: ['env=dev'] }),
     'compute create': gce.create({
         name: 'web', 'machine-type': 'e2-micro', image: 'debian-12', 'disk-size': 20, 'startup-script': 'echo hi',
         'public-ip': false, labels: ['env=dev'], zone: 'us-central1-b', wait: true,
