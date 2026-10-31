@@ -3,7 +3,7 @@ import { ActionModal } from '../components/ActionModal';
 import { Button, Check, DataTable, Empty, ErrorBox, Field, KeyValues, Modal, PageHeader, Spinner, Status } from '../components/ui';
 import { ec2, gce, lines, type Cmd, type GceInstance, type Instance } from '../lib/clover';
 import { useCli } from '../lib/hooks';
-import { Play, Plus, RefreshCw, RotateCw, Server, Square, Trash2 } from 'lucide-react';
+import { Pencil, Play, Plus, RefreshCw, RotateCw, Server, Square, Trash2 } from 'lucide-react';
 
 /** The CLI's image aliases, resolved to the latest AMI in the region. */
 const IMAGES = ['al2023', 'al2023-arm64', 'ubuntu-24.04', 'ubuntu-24.04-arm64'];
@@ -74,6 +74,50 @@ function CreateInstance({ gcp, onClose, onDone }: { gcp: boolean; onClose: () =>
     );
 }
 
+/** clover gcp compute update: only what's changed is sent. */
+function EditInstance({ instance, onClose, onDone }: { instance: Instance; onClose: () => void; onDone: () => void }) {
+    const [type, setType] = useState(instance.type ?? '');
+    const [restart, setRestart] = useState(false);
+    const [labels, setLabels] = useState('');
+    const [removeLabels, setRemoveLabels] = useState('');
+    const [protect, setProtect] = useState('');
+
+    const resize = !!type && type !== instance.type;
+    const cmd = gce.update(instance.id, instance.az!, {
+        'machine-type': resize ? type : undefined, restart: resize && restart || undefined,
+        labels: lines(labels), 'remove-labels': lines(removeLabels),
+        'deletion-protection': protect === '' ? undefined : protect === 'on',
+    });
+    const running = instance.state !== 'stopped';
+    return (
+        <ActionModal wide title={`Edit ${instance.id}`} submitLabel="Save" cmd={cmd}
+            valid={(resize || !!labels.trim() || !!removeLabels.trim() || protect !== '') && !(resize && running && !restart)}
+            onClose={onClose} onDone={onDone}>
+            <Field label="Machine type" hint={running ? 'Resizing needs the instance stopped, or a restart' : undefined}>
+                <select value={type} onChange={(e) => setType(e.target.value)}>
+                    {[...new Set([instance.type ?? '', ...GCP_TYPES])].filter(Boolean).map((x) => <option key={x}>{x}</option>)}
+                </select>
+            </Field>
+            {resize && running && <Check label="Stop, resize and start again (--restart)" checked={restart} onChange={setRestart} />}
+            <div className="field-row">
+                <Field label="Set labels" hint="One Key=Value per line; the others are kept">
+                    <textarea rows={2} value={labels} onChange={(e) => setLabels(e.target.value)} placeholder="env=prod" spellCheck={false} />
+                </Field>
+                <Field label="Remove labels" hint="One key per line">
+                    <textarea rows={2} value={removeLabels} onChange={(e) => setRemoveLabels(e.target.value)} spellCheck={false} />
+                </Field>
+            </div>
+            <Field label="Deletion protection">
+                <select value={protect} onChange={(e) => setProtect(e.target.value)}>
+                    <option value="">Unchanged</option>
+                    <option value="on">On</option>
+                    <option value="off">Off</option>
+                </select>
+            </Field>
+        </ActionModal>
+    );
+}
+
 type Power = { action: 'start' | 'stop' | 'reboot'; id: string; zone?: string };
 
 export default function Compute({ gcp }: { gcp: boolean }) {
@@ -84,6 +128,7 @@ export default function Compute({ gcp }: { gcp: boolean }) {
     const [creating, setCreating] = useState(false);
     const [details, setDetails] = useState<Instance>();
     const [power, setPower] = useState<Power>();
+    const [editing, setEditing] = useState<Instance>();
     const [deleting, setDeleting] = useState<Instance>();
     const [force, setForce] = useState(false);
 
@@ -111,12 +156,14 @@ export default function Compute({ gcp }: { gcp: boolean }) {
                             ? <Button variant="ghost" icon={Play} title="Start" onClick={() => setPower({ action: 'start', id: i.id, zone: i.az })} />
                             : <Button variant="ghost" icon={Square} title="Stop" onClick={() => setPower({ action: 'stop', id: i.id, zone: i.az })} />}
                         <Button variant="ghost" icon={RefreshCw} title="Reboot" onClick={() => setPower({ action: 'reboot', id: i.id, zone: i.az })} />
+                        {gcp && <Button variant="ghost" icon={Pencil} title="Edit" onClick={() => setEditing(i)} />}
                         <Button variant="ghost" icon={Trash2} title={gcp ? 'Delete' : 'Terminate'} onClick={() => { setForce(false); setDeleting(i); }} />
                     </span>
                 )} />
             )}
 
             {creating && <CreateInstance gcp={gcp} onClose={() => setCreating(false)} onDone={instances.reload} />}
+            {editing && <EditInstance instance={editing} onClose={() => setEditing(undefined)} onDone={instances.reload} />}
             {details && <Modal wide title={details.name ?? details.id} onClose={() => setDetails(undefined)}><KeyValues value={details} /></Modal>}
             {power && (
                 <ActionModal title={`${power.action} ${power.id}`} submitLabel={power.action[0].toUpperCase() + power.action.slice(1)}

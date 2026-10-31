@@ -46,6 +46,9 @@ const COMMANDS: Record<string, Cmd> = {
         name: 'web', 'machine-type': 'e2-micro', image: 'debian-12', 'disk-size': 20, 'startup-script': 'echo hi',
         'public-ip': false, labels: ['env=dev'], wait: true,
     }),
+    'compute update': gce.update('web', 'us-central1-a', {
+        'machine-type': 'e2-small', restart: true, labels: ['env=prod'], 'remove-labels': ['old'], 'deletion-protection': false,
+    }),
     'compute start': gce.start('web', 'us-central1-a'),
     'compute stop': gce.stop('web', 'us-central1-a'),
     'compute reboot': gce.reboot('web', 'us-central1-a'),

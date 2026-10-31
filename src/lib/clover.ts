@@ -251,6 +251,9 @@ export const gce = {
         name?: string; 'machine-type'?: string; image?: string; 'disk-size'?: number; 'startup-script'?: string;
         'public-ip'?: boolean; labels?: string[]; wait?: boolean;
     }): Cmd => ['gcp', 'compute', 'create', ...flags(o)],
+    update: (name: string, zone: string, o: {
+        'machine-type'?: string; restart?: boolean; labels?: string[]; 'remove-labels'?: string[]; 'deletion-protection'?: boolean;
+    }): Cmd => ['gcp', 'compute', 'update', name, '--zone', zone, ...flags(o)],
     start: (name: string, zone: string): Cmd => ['gcp', 'compute', 'start', name, '--zone', zone],
     stop: (name: string, zone: string): Cmd => ['gcp', 'compute', 'stop', name, '--zone', zone],
     reboot: (name: string, zone: string): Cmd => ['gcp', 'compute', 'reboot', name, '--zone', zone],
