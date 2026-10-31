@@ -36,6 +36,7 @@ const COMMANDS: Record<string, Cmd> = {
         'database-version': 'POSTGRES_16', tier: 'db-f1-micro', storage: 10, password: 'pw', public: true,
         'deletion-protection': true, labels: ['env=dev'], wait: true,
     }),
+    'sql update': cloudSql.update('db', { tier: 'db-g1-small', storage: 20, public: false, 'deletion-protection': true, labels: ['env=prod'], wait: true }),
     'sql start': cloudSql.start('db'),
     'sql stop': cloudSql.stop('db'),
     'sql reboot': cloudSql.reboot('db'),

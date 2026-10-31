@@ -194,6 +194,9 @@ export const cloudSql = {
         'database-version'?: string; tier?: string; storage?: number; password: string; public?: boolean;
         'deletion-protection'?: boolean; labels?: string[]; wait?: boolean;
     }): Cmd => ['gcp', 'sql', 'create', id, ...flags(o)],
+    update: (id: string, o: {
+        tier?: string; storage?: number; public?: boolean; 'deletion-protection'?: boolean; labels?: string[]; wait?: boolean;
+    }): Cmd => ['gcp', 'sql', 'update', id, ...flags(o)],
     start: (id: string): Cmd => ['gcp', 'sql', 'start', id],
     stop: (id: string): Cmd => ['gcp', 'sql', 'stop', id],
     reboot: (id: string): Cmd => ['gcp', 'sql', 'reboot', id],

@@ -3,7 +3,7 @@ import { ActionModal } from '../components/ActionModal';
 import { Button, Check, CopyButton, DataTable, Empty, ErrorBox, Field, KeyValues, Modal, PageHeader, Spinner, Status } from '../components/ui';
 import { cloudSql, lines, rds, type Cmd, type Database } from '../lib/clover';
 import { useCli } from '../lib/hooks';
-import { DatabaseIcon, Play, Plus, RefreshCw, RotateCw, Square, Trash2 } from 'lucide-react';
+import { DatabaseIcon, Pencil, Play, Plus, RefreshCw, RotateCw, Square, Trash2 } from 'lucide-react';
 
 const ENGINES = ['postgres', 'mysql', 'mariadb'];
 const CLASSES = ['db.t3.micro', 'db.t3.small', 'db.t3.medium', 'db.t4g.micro', 'db.t4g.small', 'db.t4g.medium'];
@@ -117,6 +117,47 @@ function CreateCloudSql({ onClose, onDone }: { onClose: () => void; onDone: () =
     );
 }
 
+/** clover gcp sql update: only what's changed is sent. */
+function EditCloudSql({ db, onClose, onDone }: { db: Database; onClose: () => void; onDone: () => void }) {
+    const [tier, setTier] = useState(db.tier ?? '');
+    const [storage, setStorage] = useState(String(db.storageGb ?? ''));
+    const [isPublic, setPublic] = useState(!!db.public);
+    const [protect, setProtect] = useState(!!db.deletionProtection);
+    const [labels, setLabels] = useState('');
+    const [wait, setWait] = useState(false);
+
+    const changed = {
+        tier: tier !== db.tier ? tier : undefined,
+        storage: Number(storage) && Number(storage) !== db.storageGb ? Number(storage) : undefined,
+        public: isPublic !== !!db.public ? isPublic : undefined,
+        'deletion-protection': protect !== !!db.deletionProtection ? protect : undefined,
+        labels: lines(labels),
+    };
+    const valid = Object.values(changed).some((v) => Array.isArray(v) ? v.length : v !== undefined)
+        && !(Number(storage) < (db.storageGb ?? 0));
+    return (
+        <ActionModal wide title={`Edit ${db.id}`} submitLabel="Save" cmd={cloudSql.update(db.id, { ...changed, wait: wait || undefined })}
+            valid={valid} onClose={onClose} onDone={onDone}>
+            <div className="field-row">
+                <Field label="Tier" hint="Changing it restarts the instance">
+                    <select value={tier} onChange={(e) => setTier(e.target.value)}>
+                        {[...new Set([db.tier ?? '', ...SQL_TIERS])].filter(Boolean).map((x) => <option key={x}>{x}</option>)}
+                    </select>
+                </Field>
+                <Field label="Storage (GiB)" hint="Can only grow">
+                    <input type="number" min={db.storageGb} value={storage} onChange={(e) => setStorage(e.target.value)} />
+                </Field>
+            </div>
+            <Field label="Set labels (optional)" hint="One Key=Value per line">
+                <textarea rows={2} value={labels} onChange={(e) => setLabels(e.target.value)} placeholder="env=prod" spellCheck={false} />
+            </Field>
+            <Check label="Public IP" checked={isPublic} onChange={setPublic} />
+            <Check label="Deletion protection" checked={protect} onChange={setProtect} />
+            <Check label="Wait until done" checked={wait} onChange={setWait} />
+        </ActionModal>
+    );
+}
+
 function Details({ gcp, id, onClose }: { gcp: boolean; id: string; onClose: () => void }) {
     const db = useCli<Database>((gcp ? cloudSql : rds).get(id));
     const url = db.data && connectionUrl(db.data);
@@ -148,6 +189,7 @@ export default function Databases({ gcp }: { gcp: boolean }) {
     const [creating, setCreating] = useState(false);
     const [details, setDetails] = useState<string>();
     const [power, setPower] = useState<Power>();
+    const [editing, setEditing] = useState<Database>();
     const [deleting, setDeleting] = useState<Database>();
     const [snapshot, setSnapshot] = useState('');
     const [force, setForce] = useState(false);
@@ -177,6 +219,7 @@ export default function Databases({ gcp }: { gcp: boolean }) {
                             ? <Button variant="ghost" icon={Play} title="Start" onClick={() => setPower({ action: 'start', id: d.id })} />
                             : <Button variant="ghost" icon={Square} title="Stop" onClick={() => setPower({ action: 'stop', id: d.id })} />}
                         <Button variant="ghost" icon={RefreshCw} title="Reboot" onClick={() => setPower({ action: 'reboot', id: d.id })} />
+                        {gcp && <Button variant="ghost" icon={Pencil} title="Edit" onClick={() => setEditing(d)} />}
                         <Button variant="ghost" icon={Trash2} title="Delete" onClick={() => { setSnapshot(''); setForce(false); setDeleting(d); }} />
                     </span>
                 )} />
@@ -185,6 +228,7 @@ export default function Databases({ gcp }: { gcp: boolean }) {
             {creating && (gcp
                 ? <CreateCloudSql onClose={() => setCreating(false)} onDone={dbs.reload} />
                 : <CreateDatabase onClose={() => setCreating(false)} onDone={dbs.reload} />)}
+            {editing && <EditCloudSql db={editing} onClose={() => setEditing(undefined)} onDone={dbs.reload} />}
             {details && <Details gcp={gcp} id={details} onClose={() => setDetails(undefined)} />}
             {power && (
                 <ActionModal title={`${power.action[0].toUpperCase()}${power.action.slice(1)} ${power.id}`} submitLabel={power.action[0].toUpperCase() + power.action.slice(1)}
