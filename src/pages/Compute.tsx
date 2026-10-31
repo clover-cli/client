@@ -12,6 +12,13 @@ const TYPES = ['t3.micro', 't3.small', 't3.medium', 't3.large', 't4g.micro', 't4
 const GCP_IMAGES = ['debian-12', 'debian-12-arm64', 'ubuntu-24.04', 'ubuntu-24.04-arm64'];
 const GCP_TYPES = ['e2-micro', 'e2-small', 'e2-medium', 'e2-standard-2', 't2a-standard-1', 't2a-standard-2'];
 
+/** Like the CLI's uptime column. EC2 resets the launch time on every start, so it's the time since the last start. */
+function uptime({ state, launched }: Instance): string {
+    if (state !== 'running' || !launched) return '—';
+    const hours = Math.floor((Date.now() - Date.parse(launched)) / 3_600_000);
+    return `${Math.floor(hours / 24)}d ${hours % 24}h`;
+}
+
 /** A Compute Engine instance in EC2's shape, so the table and actions are shared. TERMINATED is GCP's "stopped". */
 function fromGce(i: GceInstance): Instance {
     const state = i.status?.toLowerCase();
@@ -127,7 +134,12 @@ function EditInstance({ instance, onClose, onDone }: { instance: Instance; onClo
 type Power = { action: 'start' | 'stop' | 'reboot'; id: string; zone?: string };
 
 export default function Compute({ gcp }: { gcp: boolean }) {
-    const query = useCli<Instance[] | GceInstance[]>(gcp ? gce.list() : ec2.list());
+    const [state, setState] = useState('');
+    const [tag, setTag] = useState('');
+    const filter = { state: state ? [gcp && state === 'stopped' ? 'terminated' : state] : [], tags: tag ? [tag] : [] };
+    const query = useCli<Instance[] | GceInstance[]>(gcp
+        ? gce.list({ state: filter.state, label: filter.tags })
+        : ec2.list({ state: filter.state, tag: filter.tags }));
     const instances = { ...query, data: gcp ? (query.data as GceInstance[] | undefined)?.map(fromGce) : query.data as Instance[] | undefined };
     // GCP instances are listed from every zone: act on the one they're in.
     const powerCmd = (p: Power): Cmd => gcp ? gce[p.action](p.id, p.zone!) : ec2[p.action](p.id);
@@ -142,12 +154,20 @@ export default function Compute({ gcp }: { gcp: boolean }) {
         <div className="page">
             <PageHeader title="Compute" subtitle={`${gcp ? 'Compute Engine' : 'EC2'}: virtual servers`}
                 actions={<>
+                    <form onSubmit={(e) => { e.preventDefault(); setTag((new FormData(e.currentTarget).get('tag') as string).trim()); }}>
+                        <input name="tag" defaultValue={tag} placeholder={`${gcp ? 'Label' : 'Tag'}, e.g. env=dev`} title="Press Enter to filter" spellCheck={false} />
+                    </form>
+                    <select value={state} onChange={(e) => setState(e.target.value)} title="Only instances in this state (--state)">
+                        <option value="">All states</option>
+                        <option value="running">Running</option>
+                        <option value="stopped">Stopped</option>
+                    </select>
                     <Button icon={RotateCw} onClick={instances.reload} busy={instances.loading}>Refresh</Button>
                     <Button variant="primary" icon={Plus} onClick={() => setCreating(true)}>New instance</Button>
                 </>} />
             <ErrorBox error={instances.error} />
             {instances.loading && !instances.data && <Spinner />}
-            {instances.data?.length === 0 && <Empty icon={Server} title="No instances">Launch a server with a startup script in one step.</Empty>}
+            {instances.data?.length === 0 && <Empty icon={Server} title={state || tag ? 'No matching instances' : 'No instances'}>Launch a server with a startup script in one step.</Empty>}
             {!!instances.data?.length && (
                 <DataTable rows={instances.data} rowKey={(i) => i.id} onRowClick={setDetails} columns={[
                     { key: 'name', label: 'Name' },
@@ -156,6 +176,7 @@ export default function Compute({ gcp }: { gcp: boolean }) {
                     { key: 'state', label: 'State', render: (i) => <Status value={i.state} /> },
                     { key: 'publicIp', label: 'Public IP' },
                     { key: 'az', label: 'Zone' },
+                    ...(gcp ? [] : [{ key: 'uptime', label: 'Uptime', render: uptime }]),
                 ]} actions={(i) => i.state === 'terminated' ? null : (
                     <span className="row">
                         {i.state === 'stopped'

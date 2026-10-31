@@ -236,7 +236,7 @@ export const cloudFunctions = {
 };
 
 export const ec2 = {
-    list: (): Cmd => ['aws', 'ec2', 'list'],
+    list: (o: { state?: string[]; tag?: string[] } = {}): Cmd => ['aws', 'ec2', 'list', ...flags(o)],
     get: (id: string): Cmd => ['aws', 'ec2', 'get', id],
     create: (o: {
         image?: string; 'instance-type'?: string; count?: number; name?: string; 'key-name'?: string;
@@ -250,7 +250,7 @@ export const ec2 = {
 
 /** clover gcp compute: instances are addressed by name and --zone. */
 export const gce = {
-    list: (): Cmd => ['gcp', 'compute', 'list'],
+    list: (o: { state?: string[]; label?: string[] } = {}): Cmd => ['gcp', 'compute', 'list', ...flags(o)],
     create: (o: {
         name?: string; 'machine-type'?: string; image?: string; 'disk-size'?: number; 'startup-script'?: string;
         'public-ip'?: boolean; labels?: string[]; zone?: string; wait?: boolean;
