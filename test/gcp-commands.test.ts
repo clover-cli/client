@@ -58,6 +58,7 @@ const COMMANDS: Record<string, Cmd> = {
     'firestore list': firestore.list(),
     'firestore get': firestore.get('default'),
     'firestore create': firestore.create('default', { region: 'nam5', 'deletion-protection': true, wait: true }),
+    'firestore update': firestore.update('default', { 'deletion-protection': false, wait: true }),
     'firestore delete': firestore.delete('default', { force: true }),
     'firestore scan': firestore.scan('default', { collection: 'users', limit: 0 }),
     'firestore put-item': firestore.putItem('default', 'users', '1', '{"name":"Ada"}'),

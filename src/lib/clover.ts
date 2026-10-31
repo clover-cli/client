@@ -163,6 +163,7 @@ export const firestore = {
     get: (db: string): Cmd => ['gcp', 'firestore', 'get', db],
     create: (db: string, o: { region?: string; 'deletion-protection'?: boolean; wait?: boolean }): Cmd =>
         ['gcp', 'firestore', 'create', db, ...flags(o)],
+    update: (db: string, o: { 'deletion-protection'?: boolean; wait?: boolean }): Cmd => ['gcp', 'firestore', 'update', db, ...flags(o)],
     delete: (db: string, o: { force?: boolean }): Cmd => ['gcp', 'firestore', 'delete', db, ...flags(o), YES],
     scan: (db: string, o: { collection: string; limit?: number }): Cmd => ['gcp', 'firestore', 'scan', db, ...flags(o)],
     putItem: (db: string, collection: string, id: string, item: string): Cmd =>

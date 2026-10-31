@@ -4,7 +4,7 @@ import { Button, Check, DataTable, Empty, ErrorBox, Field, PageHeader, Spinner, 
 import { cell, formatBytes } from '../lib/format';
 import { dynamodb, firestore, lines, type Cmd, type FirestoreDatabase, type Item, type Table } from '../lib/clover';
 import { useCli } from '../lib/hooks';
-import { Plus, RotateCw, TableIcon, Trash2 } from 'lucide-react';
+import { Lock, LockOpen, Plus, RotateCw, TableIcon, Trash2 } from 'lucide-react';
 
 /** "userId:S" -> "userId" */
 const keyName = (spec?: string) => spec?.split(':')[0];
@@ -127,6 +127,7 @@ function TableView({ gcp, name, onDeleted }: { gcp: boolean; name: string; onDel
     const [editing, setEditing] = useState<Item | 'new'>();
     const [deleting, setDeleting] = useState<Item>();
     const [deletingTable, setDeletingTable] = useState(false);
+    const [protecting, setProtecting] = useState(false);
     const [force, setForce] = useState(false);
 
     const pk = gcp ? 'id' : keyName(meta.data?.partitionKey);
@@ -178,6 +179,10 @@ function TableView({ gcp, name, onDeleted }: { gcp: boolean; name: string; onDel
                     </select>
                     <Button icon={RotateCw} onClick={reload} busy={items.loading}>Refresh</Button>
                     <Button variant="primary" icon={Plus} onClick={() => setEditing('new')} disabled={!pk || (gcp && !collection)}>Insert row</Button>
+                    {gcp && meta.data && (
+                        <Button variant="ghost" icon={meta.data.deletionProtection ? Lock : LockOpen} onClick={() => setProtecting(true)}
+                            title={`Deletion protection is ${meta.data.deletionProtection ? 'on' : 'off'}`} />
+                    )}
                     <Button variant="ghost" icon={Trash2} title={gcp ? 'Delete database' : 'Delete table'} onClick={() => setDeletingTable(true)} />
                 </div>
             </div>
@@ -200,6 +205,16 @@ function TableView({ gcp, name, onDeleted }: { gcp: boolean; name: string; onDel
                 <ActionModal danger title="Delete row" submitLabel="Delete row" cmd={gcp ? firestore.deleteItem(name, collection, String(deleting.id)) : dynamodb.deleteItem(name, keyOf(deleting))}
                     onClose={() => setDeleting(undefined)} onDone={reload}>
                     <p>Delete the item with key <code>{JSON.stringify(keyOf(deleting))}</code>?</p>
+                </ActionModal>
+            )}
+            {protecting && meta.data && (
+                <ActionModal title={`Turn deletion protection ${meta.data.deletionProtection ? 'off' : 'on'}`}
+                    submitLabel={meta.data.deletionProtection ? 'Turn off' : 'Turn on'} danger={meta.data.deletionProtection}
+                    cmd={firestore.update(name, { 'deletion-protection': !meta.data.deletionProtection, wait: true })}
+                    onClose={() => setProtecting(false)} onDone={meta.reload}>
+                    <p>{meta.data.deletionProtection
+                        ? <>Without it, <strong>{name}</strong> can be deleted.</>
+                        : <>With it, <strong>{name}</strong> can't be deleted until it's turned off again.</>}</p>
                 </ActionModal>
             )}
             {deletingTable && (
