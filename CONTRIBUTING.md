@@ -17,6 +17,7 @@ The client does nothing the CLI can't do. It never uses a cloud SDK. Every actio
 | Databases | `clover aws rds list/get/create/start/stop/reboot/delete` | `clover gcp sql` (same actions, plus `update`) |
 | Compute | `clover aws ec2 list/create/start/stop/reboot/delete` | `clover gcp compute` (same actions, plus `update`) |
 | Permissions | `clover aws iam policies/check` | `clover gcp iam policies/check` |
+| Compute / Databases: summary | `clover aws ec2 summary`, `clover aws rds summary` | — |
 | Connect / region | `clover aws whoami` | `clover gcp whoami` |
 
 ## Development
