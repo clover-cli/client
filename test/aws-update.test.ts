@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ec2, rds, type Cmd } from '../src/lib/clover';
+import { dynamodb, ec2, rds, type Cmd } from '../src/lib/clover';
 
 // The real CLI: the @clover-cli/cli dependency (build it first), not a CLOVER_CLI override.
 vi.stubEnv('CLOVER_CLI', undefined);
@@ -18,7 +18,19 @@ const COMMANDS: Record<string, Cmd> = {
         'instance-class': 'db.t3.small', storage: 40, password: 'pw', 'backup-retention': 7, 'multi-az': true, public: false,
         'deletion-protection': true, 'apply-immediately': true, tags: ['env=prod'], wait: true,
     }),
+    'dynamodb update': dynamodb.update('users', {
+        billing: 'provisioned', 'read-capacity': 10, 'write-capacity': 5, 'ttl-attribute': 'expiresAt',
+        'deletion-protection': true, tags: ['env=prod'], wait: true,
+    }),
+    'dynamodb update (TTL off)': dynamodb.update('users', { 'ttl-attribute': '' }),
 };
+
+describe('dynamodb update', () => {
+    it('sends an empty --ttl-attribute to turn TTL off, and leaves it out when unset', () => {
+        expect(dynamodb.update('t', { 'ttl-attribute': '' })).toEqual(['aws', 'dynamodb', 'update', 't', '--ttl-attribute', '']);
+        expect(dynamodb.update('t', {})).toEqual(['aws', 'dynamodb', 'update', 't']);
+    });
+});
 
 describe.concurrent('every AWS update the client runs is one the CLI accepts', () => {
     it.each(Object.entries(COMMANDS))('clover aws %s', async (_, cmd) => {

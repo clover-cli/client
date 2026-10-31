@@ -151,6 +151,11 @@ export const dynamodb = {
         'partition-key': string; 'sort-key'?: string; billing?: string; 'read-capacity'?: number; 'write-capacity'?: number;
         'ttl-attribute'?: string; 'deletion-protection'?: boolean; tags?: string[]; wait?: boolean;
     }): Cmd => ['aws', 'dynamodb', 'create', table, ...flags(o)],
+    /** `'ttl-attribute': ''` turns TTL off, so it's sent even though it's empty. */
+    update: (table: string, o: {
+        billing?: string; 'read-capacity'?: number; 'write-capacity'?: number; 'ttl-attribute'?: string;
+        'deletion-protection'?: boolean; tags?: string[]; wait?: boolean;
+    }): Cmd => ['aws', 'dynamodb', 'update', table, ...flags(o), ...(o['ttl-attribute'] === '' ? ['--ttl-attribute', ''] : [])],
     delete: (table: string, o: { force?: boolean }): Cmd => ['aws', 'dynamodb', 'delete', table, ...flags(o), YES],
     scan: (table: string, o: { limit?: number }): Cmd => ['aws', 'dynamodb', 'scan', table, ...flags(o)],
     putItem: (table: string, item: string): Cmd => ['aws', 'dynamodb', 'put-item', table, '--item', item],

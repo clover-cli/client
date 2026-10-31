@@ -4,7 +4,7 @@ import { Button, Check, DataTable, Empty, ErrorBox, Field, PageHeader, Spinner, 
 import { cell, formatBytes } from '../lib/format';
 import { dynamodb, firestore, lines, type Cmd, type FirestoreDatabase, type Item, type Table } from '../lib/clover';
 import { useCli } from '../lib/hooks';
-import { Lock, LockOpen, Plus, RotateCw, TableIcon, Trash2 } from 'lucide-react';
+import { Lock, LockOpen, Plus, RotateCw, Settings2, TableIcon, Trash2 } from 'lucide-react';
 
 /** "userId:S" -> "userId" */
 const keyName = (spec?: string) => spec?.split(':')[0];
@@ -64,6 +64,53 @@ function CreateTable({ onClose, onDone }: { onClose: () => void; onDone: (name: 
             </Field>
             <Check label="Deletion protection" checked={protect} onChange={setProtect} />
             <p className="muted small">Billing is on-demand: you pay per request, nothing while idle.</p>
+        </ActionModal>
+    );
+}
+
+/** clover aws dynamodb update: only what's changed is sent. */
+function EditTable({ table, onClose, onDone }: { table: Table; onClose: () => void; onDone: () => void }) {
+    const [billing, setBilling] = useState(table.billing ?? 'on-demand');
+    const [read, setRead] = useState(String(table.readCapacity || 5));
+    const [write, setWrite] = useState(String(table.writeCapacity || 5));
+    const [ttl, setTtl] = useState(table.ttlAttribute ?? '');
+    const [protect, setProtect] = useState(!!table.deletionProtection);
+    const [tags, setTags] = useState('');
+
+    const provisioned = billing === 'provisioned';
+    const capacityChanged = provisioned && (Number(read) !== table.readCapacity || Number(write) !== table.writeCapacity);
+    const changed = {
+        billing: billing !== table.billing ? billing : undefined,
+        'read-capacity': capacityChanged ? Number(read) : undefined,
+        'write-capacity': capacityChanged ? Number(write) : undefined,
+        'ttl-attribute': ttl !== (table.ttlAttribute ?? '') ? ttl : undefined,
+        'deletion-protection': protect !== !!table.deletionProtection ? protect : undefined,
+        tags: lines(tags),
+    };
+    const valid = Object.values(changed).some((v) => Array.isArray(v) ? v.length : v !== undefined)
+        && (!provisioned || (Number(read) > 0 && Number(write) > 0));
+    return (
+        <ActionModal title={`${table.name} settings`} submitLabel="Save" valid={valid} onClose={onClose} onDone={onDone}
+            cmd={dynamodb.update(table.name, { ...changed, wait: true })}>
+            <Field label="Billing" hint={provisioned ? 'You pay for the capacity you set, used or not' : 'You pay per request, nothing while idle'}>
+                <select value={billing} onChange={(e) => setBilling(e.target.value)}>
+                    <option value="on-demand">On-demand</option>
+                    <option value="provisioned">Provisioned</option>
+                </select>
+            </Field>
+            {provisioned && (
+                <div className="field-row">
+                    <Field label="Read capacity units"><input type="number" min={1} value={read} onChange={(e) => setRead(e.target.value)} /></Field>
+                    <Field label="Write capacity units"><input type="number" min={1} value={write} onChange={(e) => setWrite(e.target.value)} /></Field>
+                </div>
+            )}
+            <Field label="TTL attribute" hint="Items expire at the epoch-seconds time stored in it. Empty turns TTL off">
+                <input value={ttl} onChange={(e) => setTtl(e.target.value)} placeholder="expiresAt" spellCheck={false} />
+            </Field>
+            <Field label="Set tags (optional)" hint="One Key=Value per line">
+                <textarea rows={2} value={tags} onChange={(e) => setTags(e.target.value)} placeholder="env=prod" spellCheck={false} />
+            </Field>
+            <Check label="Deletion protection" checked={protect} onChange={setProtect} />
         </ActionModal>
     );
 }
@@ -128,6 +175,7 @@ function TableView({ gcp, name, onDeleted }: { gcp: boolean; name: string; onDel
     const [deleting, setDeleting] = useState<Item>();
     const [deletingTable, setDeletingTable] = useState(false);
     const [protecting, setProtecting] = useState(false);
+    const [editingTable, setEditingTable] = useState(false);
     const [force, setForce] = useState(false);
 
     const pk = gcp ? 'id' : keyName(meta.data?.partitionKey);
@@ -183,6 +231,7 @@ function TableView({ gcp, name, onDeleted }: { gcp: boolean; name: string; onDel
                         <Button variant="ghost" icon={meta.data.deletionProtection ? Lock : LockOpen} onClick={() => setProtecting(true)}
                             title={`Deletion protection is ${meta.data.deletionProtection ? 'on' : 'off'}`} />
                     )}
+                    {!gcp && <Button variant="ghost" icon={Settings2} title="Table settings" onClick={() => setEditingTable(true)} disabled={!meta.data} />}
                     <Button variant="ghost" icon={Trash2} title={gcp ? 'Delete database' : 'Delete table'} onClick={() => setDeletingTable(true)} />
                 </div>
             </div>
@@ -207,6 +256,7 @@ function TableView({ gcp, name, onDeleted }: { gcp: boolean; name: string; onDel
                     <p>Delete the item with key <code>{JSON.stringify(keyOf(deleting))}</code>?</p>
                 </ActionModal>
             )}
+            {editingTable && meta.data && <EditTable table={meta.data} onClose={() => setEditingTable(false)} onDone={meta.reload} />}
             {protecting && meta.data && (
                 <ActionModal title={`Turn deletion protection ${meta.data.deletionProtection ? 'off' : 'on'}`}
                     submitLabel={meta.data.deletionProtection ? 'Turn off' : 'Turn on'} danger={meta.data.deletionProtection}
