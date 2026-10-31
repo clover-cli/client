@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActionModal } from '../components/ActionModal';
-import { Button, Check, CopyButton, DataTable, Empty, ErrorBox, Field, KeyValues, Modal, PageHeader, Spinner, Status } from '../components/ui';
-import { cloudSql, lines, rds, type Cmd, type Database } from '../lib/clover';
+import { Button, Check, Chips, CopyButton, DataTable, Empty, ErrorBox, Field, KeyValues, Modal, PageHeader, Spinner, Status } from '../components/ui';
+import { cloudSql, lines, rds, type Cmd, type Database, type RdsClassCount } from '../lib/clover';
 import { useCli } from '../lib/hooks';
 import { DatabaseIcon, Pencil, Play, Plus, RefreshCw, RotateCw, Square, Trash2 } from 'lucide-react';
 
@@ -23,6 +23,12 @@ function connectionUrl(db: Database): string | undefined {
     if (!db.endpoint) return undefined;
     const scheme = db.engine?.startsWith('postgres') ? 'postgresql' : 'mysql';
     return `${scheme}://${db.username ?? 'user'}:<password>@${db.endpoint}:${db.port}/${db.database ?? ''}`;
+}
+
+/** clover aws rds summary. Keyed on the list, so it's read again whenever the list changes. */
+function ClassSummary() {
+    const summary = useCli<RdsClassCount[]>(rds.summary());
+    return <Chips items={(summary.data ?? []).map((g) => `${g.count} × ${g.engine} ${g.class} · ${g.storageGb} GiB · ${g.available} available`)} />;
 }
 
 function CreateDatabase({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
@@ -204,6 +210,7 @@ export default function Databases({ gcp }: { gcp: boolean }) {
                     <Button variant="primary" icon={Plus} onClick={() => setCreating(true)}>New database</Button>
                 </>} />
             <ErrorBox error={dbs.error} />
+            {!gcp && dbs.data && <ClassSummary key={dbs.data.map((d) => `${d.id}:${d.class}:${d.status}:${d.storageGb}`).join()} />}
             {dbs.loading && !dbs.data && <Spinner />}
             {dbs.data?.length === 0 && <Empty icon={DatabaseIcon} title="No databases yet">A Postgres database is one form away.</Empty>}
             {!!dbs.data?.length && (

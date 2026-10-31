@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActionModal } from '../components/ActionModal';
-import { Button, Check, DataTable, Empty, ErrorBox, Field, KeyValues, Modal, PageHeader, Spinner, Status } from '../components/ui';
-import { ec2, gce, lines, type Cmd, type GceInstance, type Instance } from '../lib/clover';
+import { Button, Check, Chips, DataTable, Empty, ErrorBox, Field, KeyValues, Modal, PageHeader, Spinner, Status } from '../components/ui';
+import { ec2, gce, lines, type Cmd, type Ec2TypeCount, type GceInstance, type Instance } from '../lib/clover';
 import { useCli } from '../lib/hooks';
 import { Pencil, Play, Plus, RefreshCw, RotateCw, Server, Square, Trash2 } from 'lucide-react';
 
@@ -19,6 +19,13 @@ function fromGce(i: GceInstance): Instance {
         id: i.name, name: i.name, type: i.machineType, state: state === 'terminated' ? 'stopped' : state, az: i.zone,
         publicIp: i.publicIp, privateIp: i.privateIp, launched: i.created, tags: i.labels,
     };
+}
+
+/** clover aws ec2 summary. Keyed on the list, so it's read again whenever the list changes. */
+function TypeSummary() {
+    const summary = useCli<Ec2TypeCount[]>(ec2.summary());
+    return <Chips items={(summary.data ?? []).map((t) =>
+        `${t.count} × ${t.type}${t.vcpus ? ` · ${t.vcpus} vCPU, ${t.memoryGib} GiB` : ''} · ${t.running} running`)} />;
 }
 
 function CreateInstance({ gcp, onClose, onDone }: { gcp: boolean; onClose: () => void; onDone: () => void }) {
@@ -146,6 +153,7 @@ export default function Compute({ gcp }: { gcp: boolean }) {
                     <Button variant="primary" icon={Plus} onClick={() => setCreating(true)}>New instance</Button>
                 </>} />
             <ErrorBox error={instances.error} />
+            {!gcp && instances.data && <TypeSummary key={instances.data.map((i) => `${i.id}:${i.type}:${i.state}`).join()} />}
             {instances.loading && !instances.data && <Spinner />}
             {instances.data?.length === 0 && <Empty icon={Server} title="No instances">Launch a server with a startup script in one step.</Empty>}
             {!!instances.data?.length && (
