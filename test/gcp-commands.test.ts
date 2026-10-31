@@ -26,7 +26,9 @@ const COMMANDS: Record<string, Cmd> = {
     'functions create': cloudFunctions.create('hello', {
         source: 'test', runtime: 'nodejs22', 'entry-point': 'main', memory: 256, timeout: 60, env: ['A=1'], wait: true,
     }),
-    'functions update': cloudFunctions.update('hello', { source: 'test', env: ['A=2'], 'remove-env': ['B'], wait: true }),
+    'functions update': cloudFunctions.update('hello', {
+        source: 'test', description: 'Says hi', env: ['A=2'], 'remove-env': ['B'], labels: ['env=prod'], wait: true,
+    }),
     'functions delete': cloudFunctions.delete('hello'),
     'functions invoke': cloudFunctions.invoke('hello', { payload: '{"name":"Ada"}' }),
 

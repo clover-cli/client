@@ -229,7 +229,7 @@ export const cloudFunctions = {
     }): Cmd => ['gcp', 'functions', 'create', name, ...flags(o)],
     update: (name: string, o: {
         source?: string; runtime?: string; 'entry-point'?: string; memory?: number; timeout?: number;
-        env?: string[]; 'remove-env'?: string[]; wait?: boolean;
+        description?: string; env?: string[]; 'remove-env'?: string[]; labels?: string[]; wait?: boolean;
     }): Cmd => ['gcp', 'functions', 'update', name, ...flags(o)],
     delete: (name: string): Cmd => ['gcp', 'functions', 'delete', name, YES],
     invoke: (name: string, o: { payload?: string }): Cmd => ['gcp', 'functions', 'invoke', name, ...flags(o)],

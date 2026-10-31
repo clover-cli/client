@@ -79,12 +79,24 @@ function Deploy({ gcp, fn, onClose, onDone }: { gcp: boolean; fn: LambdaFunction
     const [code, setCode] = useState('');
     const [env, setEnv] = useState('');
     const [removeEnv, setRemoveEnv] = useState('');
+    const [description, setDescription] = useState('');
+    const [labels, setLabels] = useState('');
     const o = { env: lines(env), 'remove-env': lines(removeEnv), wait: true };
-    const cmd = gcp ? cloudFunctions.update(fn.name, { ...o, source: code }) : lambda.update(fn.name, { ...o, code });
+    const cmd = gcp
+        ? cloudFunctions.update(fn.name, { ...o, source: code, description, labels: lines(labels) })
+        : lambda.update(fn.name, { ...o, code });
     return (
         <ActionModal wide title={`Update ${fn.name}`} submitLabel="Update" cmd={cmd}
-            valid={!!code || !!env.trim() || !!removeEnv.trim()} onClose={onClose} onDone={onDone}>
+            valid={!!code || !!env.trim() || !!removeEnv.trim() || !!description || !!labels.trim()} onClose={onClose} onDone={onDone}>
             <CodePicker value={code} onChange={setCode} />
+            {gcp && (
+                <div className="field-row">
+                    <Field label="Description (optional)"><input value={description} onChange={(e) => setDescription(e.target.value)} /></Field>
+                    <Field label="Set labels (optional)" hint="One Key=Value per line">
+                        <textarea rows={1} value={labels} onChange={(e) => setLabels(e.target.value)} placeholder="env=prod" spellCheck={false} />
+                    </Field>
+                </div>
+            )}
             <Field label="Set environment variables" hint="One KEY=VALUE per line; the other variables are kept">
                 <textarea rows={3} value={env} onChange={(e) => setEnv(e.target.value)} spellCheck={false} />
             </Field>
