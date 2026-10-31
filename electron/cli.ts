@@ -2,11 +2,11 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { formatCommand } from '../shared/format';
-import type { AwsCredentials, CliActivity, CliInfo, CliResult } from '../shared/types';
+import type { CliActivity, CliInfo, CliResult, Credentials } from '../shared/types';
 
 /**
- * Runs the clover CLI. This is the only way the client talks to AWS: every screen in the app is
- * a `clover aws ...` command, run exactly as it would be from a terminal.
+ * Runs the clover CLI. This is the only way the client talks to AWS or GCP: every screen in the app is
+ * a `clover aws ...` or `clover gcp ...` command, run exactly as it would be from a terminal.
  *
  * Which CLI runs:
  *   - CLOVER_CLI=/path/to/clover        a `clover` executable (e.g. a global `npm link`)
@@ -17,7 +17,10 @@ import type { AwsCredentials, CliActivity, CliInfo, CliResult } from '../shared/
 const require = createRequire(import.meta.url);
 
 /** The same variables the CLI reads (src/credentials.ts in the CLI). */
-const AWS_ENV_VARS = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN', 'AWS_REGION', 'AWS_DEFAULT_REGION'];
+const CREDENTIAL_ENV_VARS = [
+    'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN', 'AWS_REGION', 'AWS_DEFAULT_REGION',
+    'GOOGLE_CLOUD_PROJECT', 'GOOGLE_APPLICATION_CREDENTIALS',
+];
 
 interface Launcher {
     file: string;
@@ -40,13 +43,16 @@ function resolveLauncher(): Launcher {
 const launcher = resolveLauncher();
 
 /**
- * The environment for one CLI run: the app's environment without any AWS credentials,
+ * The environment for one CLI run: the app's environment without any AWS or GCP credentials,
  * plus the session's credentials. The CLI reads them from there, as it would in a shell.
  */
-function cliEnv(credentials: AwsCredentials | undefined): NodeJS.ProcessEnv {
+function cliEnv(credentials: Credentials | undefined): NodeJS.ProcessEnv {
     const env: NodeJS.ProcessEnv = { ...process.env, ...launcher.env };
-    for (const name of AWS_ENV_VARS) delete env[name];
-    if (credentials) {
+    for (const name of CREDENTIAL_ENV_VARS) delete env[name];
+    if (credentials?.provider === 'gcp') {
+        env.GOOGLE_CLOUD_PROJECT = credentials.project;
+        if (credentials.keyFile) env.GOOGLE_APPLICATION_CREDENTIALS = credentials.keyFile;
+    } else if (credentials) {
         env.AWS_ACCESS_KEY_ID = credentials.accessKeyId;
         env.AWS_SECRET_ACCESS_KEY = credentials.secretAccessKey;
         if (credentials.sessionToken) env.AWS_SESSION_TOKEN = credentials.sessionToken;
@@ -69,7 +75,7 @@ export function killAll(): void {
     for (const child of running) child.kill();
 }
 
-export function runCli(args: string[], credentials: AwsCredentials | undefined): Promise<CliResult> {
+export function runCli(args: string[], credentials: Credentials | undefined): Promise<CliResult> {
     const id = nextId++;
     const command = formatCommand(args);
     const startedAt = Date.now();

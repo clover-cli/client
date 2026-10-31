@@ -1,8 +1,10 @@
 /**
  * Types shared by the Electron main process and the React renderer.
  * Everything the renderer can do goes through `window.clover` (see electron/preload.ts),
- * and every AWS operation is a run of the clover CLI.
+ * and every cloud operation is a run of the clover CLI.
  */
+
+export type Provider = 'aws' | 'gcp';
 
 export interface AwsCredentials {
     accessKeyId: string;
@@ -11,7 +13,16 @@ export interface AwsCredentials {
     region: string;
 }
 
-/** Parsed from `clover aws whoami`. */
+/** The same variables the CLI reads: GOOGLE_CLOUD_PROJECT and GOOGLE_APPLICATION_CREDENTIALS. */
+export interface GcpCredentials {
+    project: string;
+    /** Service account key file. Without one, gcloud's application default credentials are used. */
+    keyFile?: string;
+}
+
+export type Credentials = ({ provider: 'aws' } & AwsCredentials) | ({ provider: 'gcp' } & GcpCredentials);
+
+/** Parsed from `clover aws whoami`, or `clover gcp whoami` (account: the project, arn: the email). */
 export interface Identity {
     arn: string;
     account: string;
@@ -20,10 +31,11 @@ export interface Identity {
 
 export interface Session {
     connected: boolean;
+    provider?: Provider;
     identity?: Identity;
     /** 'env': inherited from the environment the app was started from. 'app': entered in the app. */
     source?: 'env' | 'app';
-    /** Masked access key id, e.g. ****************WXYZ. The secret never leaves the main process. */
+    /** Masked access key id, e.g. ****************WXYZ, or the GCP key file. The secret never leaves the main process. */
     accessKeyHint?: string;
 }
 
@@ -65,7 +77,7 @@ export interface OpenDialogOptions {
 export interface CloverBridge {
     session: {
         get(): Promise<Session>;
-        connect(credentials: AwsCredentials): Promise<Session>;
+        connect(credentials: Credentials): Promise<Session>;
         setRegion(region: string): Promise<Session>;
         disconnect(): Promise<Session>;
     };

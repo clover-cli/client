@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { app, BrowserWindow, dialog, ipcMain, session as electronSession, shell } from 'electron';
-import type { AwsCredentials, OpenDialogOptions } from '../shared/types';
+import type { Credentials, OpenDialogOptions } from '../shared/types';
 import { cliInfo, killAll, onActivity, runCli } from './cli';
 import { connect, credentialsFromEnv, currentCredentials, currentSession, disconnect, setRegion } from './session';
 
@@ -43,14 +43,14 @@ function createWindow() {
 }
 
 /**
- * The renderer may only run `clover aws ...` commands. Credentials belong to the session
- * (connect/disconnect), so `aws login` and `aws logout` are not run from here.
+ * The renderer may only run `clover aws ...` and `clover gcp ...` commands. Credentials belong to the
+ * session (connect/disconnect), so `login` and `logout` are not run from here.
  */
 function checkArgs(args: unknown): string[] {
     if (!Array.isArray(args) || !args.every((a): a is string => typeof a === 'string')) {
         throw new Error('CLI arguments must be a list of strings.');
     }
-    if (args[0] !== 'aws' || args[1] === 'login' || args[1] === 'logout') {
+    if ((args[0] !== 'aws' && args[0] !== 'gcp') || args[1] === 'login' || args[1] === 'logout') {
         throw new Error(`Not a command the client runs: clover ${args.join(' ')}`);
     }
     return args;
@@ -60,7 +60,7 @@ function registerIpc() {
     onActivity((activity) => win?.webContents.send('cli:activity', activity));
 
     ipcMain.handle('session:get', () => currentSession());
-    ipcMain.handle('session:connect', (_e, credentials: AwsCredentials) => connect(credentials, 'app'));
+    ipcMain.handle('session:connect', (_e, credentials: Credentials) => connect(credentials, 'app'));
     ipcMain.handle('session:setRegion', (_e, region: string) => setRegion(String(region)));
     ipcMain.handle('session:disconnect', () => disconnect());
 
@@ -96,11 +96,11 @@ app.whenReady().then(async () => {
 
     registerIpc();
 
-    // Started from a shell that already has AWS credentials (e.g. after `eval "$(clover aws login)"`)?
+    // Started from a shell that already has credentials (e.g. after `eval "$(clover aws login)"` or `clover gcp login`)?
     // Use them, exactly like the CLI would.
     const fromEnv = credentialsFromEnv();
     if (fromEnv) {
-        await connect(fromEnv, 'env').catch((err: Error) => console.error(`AWS credentials from the environment were rejected: ${err.message}`));
+        await connect(fromEnv, 'env').catch((err: Error) => console.error(`${fromEnv.provider.toUpperCase()} credentials from the environment were rejected: ${err.message}`));
     }
 
     createWindow();

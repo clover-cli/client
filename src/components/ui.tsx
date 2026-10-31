@@ -69,7 +69,7 @@ export function Empty({ icon: Icon, title, children }: { icon: LucideIcon; title
     );
 }
 
-const GOOD = /^(running|available|active|enabled|successful)$/i;
+const GOOD = /^(running|runnable|available|active|enabled|successful)$/i;
 const BAD = /^(failed|error|terminated|deleting|shutting-down|inactive|incompatible.*|storage-full)$/i;
 const IDLE = /^(stopped|disabled|suspended)$/i;
 
