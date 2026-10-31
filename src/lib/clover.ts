@@ -169,6 +169,11 @@ export const dynamodb = {
         'partition-key': string; 'sort-key'?: string; billing?: string; 'read-capacity'?: number; 'write-capacity'?: number;
         'ttl-attribute'?: string; 'deletion-protection'?: boolean; tags?: string[]; wait?: boolean;
     }): Cmd => ['aws', 'dynamodb', 'create', table, ...flags(o)],
+    /** `'ttl-attribute': ''` turns TTL off, so it's sent even though it's empty. */
+    update: (table: string, o: {
+        billing?: string; 'read-capacity'?: number; 'write-capacity'?: number; 'ttl-attribute'?: string;
+        'deletion-protection'?: boolean; tags?: string[]; wait?: boolean;
+    }): Cmd => ['aws', 'dynamodb', 'update', table, ...flags(o), ...(o['ttl-attribute'] === '' ? ['--ttl-attribute', ''] : [])],
     delete: (table: string, o: { force?: boolean }): Cmd => ['aws', 'dynamodb', 'delete', table, ...flags(o), YES],
     scan: (table: string, o: { limit?: number }): Cmd => ['aws', 'dynamodb', 'scan', table, ...flags(o)],
     putItem: (table: string, item: string): Cmd => ['aws', 'dynamodb', 'put-item', table, '--item', item],
@@ -199,6 +204,10 @@ export const rds = {
         password?: string; database?: string; public?: boolean; 'multi-az'?: boolean; 'backup-retention'?: number;
         'deletion-protection'?: boolean; tags?: string[]; wait?: boolean;
     }): Cmd => ['aws', 'rds', 'create', id, ...flags(o)],
+    update: (id: string, o: {
+        'instance-class'?: string; storage?: number; password?: string; 'backup-retention'?: number; 'multi-az'?: boolean;
+        public?: boolean; 'deletion-protection'?: boolean; 'apply-immediately'?: boolean; tags?: string[]; wait?: boolean;
+    }): Cmd => ['aws', 'rds', 'update', id, ...flags(o)],
     start: (id: string): Cmd => ['aws', 'rds', 'start', id],
     stop: (id: string): Cmd => ['aws', 'rds', 'stop', id],
     reboot: (id: string): Cmd => ['aws', 'rds', 'reboot', id],
@@ -262,6 +271,10 @@ export const ec2 = {
         image?: string; 'instance-type'?: string; count?: number; name?: string; 'key-name'?: string;
         'volume-size'?: number; 'public-ip'?: boolean; 'user-data'?: string; tags?: string[]; wait?: boolean;
     }): Cmd => ['aws', 'ec2', 'create', ...flags(o)],
+    update: (id: string, o: {
+        'instance-type'?: string; restart?: boolean; name?: string; tags?: string[]; 'remove-tags'?: string[];
+        'termination-protection'?: boolean;
+    }): Cmd => ['aws', 'ec2', 'update', id, ...flags(o)],
     start: (id: string): Cmd => ['aws', 'ec2', 'start', id],
     stop: (id: string): Cmd => ['aws', 'ec2', 'stop', id],
     reboot: (id: string): Cmd => ['aws', 'ec2', 'reboot', id],
