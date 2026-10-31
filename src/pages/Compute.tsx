@@ -26,6 +26,7 @@ function CreateInstance({ gcp, onClose, onDone }: { gcp: boolean; onClose: () =>
     const [image, setImage] = useState(gcp ? 'debian-12' : 'al2023');
     const [type, setType] = useState(gcp ? 'e2-micro' : 't3.micro');
     const [keyName, setKeyName] = useState('');
+    const [zone, setZone] = useState('');
     const [volume, setVolume] = useState('');
     const [userData, setUserData] = useState('');
     const [publicIp, setPublicIp] = useState(true);
@@ -36,7 +37,7 @@ function CreateInstance({ gcp, onClose, onDone }: { gcp: boolean; onClose: () =>
     const cmd = gcp
         ? gce.create({
             name, image, 'machine-type': type, 'disk-size': size, 'public-ip': publicIp, 'startup-script': userData,
-            labels: lines(tags), wait: wait || undefined,
+            labels: lines(tags), zone, wait: wait || undefined,
         })
         : ec2.create({
             name, image, 'instance-type': type, 'key-name': keyName, 'volume-size': size,
@@ -56,6 +57,11 @@ function CreateInstance({ gcp, onClose, onDone }: { gcp: boolean; onClose: () =>
                 </Field>
                 <Field label="Disk (GiB, optional)"><input type="number" value={volume} onChange={(e) => setVolume(e.target.value)} placeholder="image default" /></Field>
             </div>
+            {gcp && (
+                <Field label="Zone (optional)" hint="Defaults to the region's -a zone">
+                    <input value={zone} onChange={(e) => setZone(e.target.value)} placeholder="us-central1-a" spellCheck={false} />
+                </Field>
+            )}
             {!gcp && (
                 <Field label="SSH key pair (optional)" hint="Name of an existing EC2 key pair">
                     <input value={keyName} onChange={(e) => setKeyName(e.target.value)} spellCheck={false} />
@@ -123,7 +129,7 @@ type Power = { action: 'start' | 'stop' | 'reboot'; id: string; zone?: string };
 export default function Compute({ gcp }: { gcp: boolean }) {
     const query = useCli<Instance[] | GceInstance[]>(gcp ? gce.list() : ec2.list());
     const instances = { ...query, data: gcp ? (query.data as GceInstance[] | undefined)?.map(fromGce) : query.data as Instance[] | undefined };
-    // GCP instances are created in the CLI's default zone, but listed from every zone: act on the one they're in.
+    // GCP instances are listed from every zone: act on the one they're in.
     const powerCmd = (p: Power): Cmd => gcp ? gce[p.action](p.id, p.zone!) : ec2[p.action](p.id);
     const [creating, setCreating] = useState(false);
     const [details, setDetails] = useState<Instance>();

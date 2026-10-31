@@ -44,7 +44,7 @@ const COMMANDS: Record<string, Cmd> = {
     'compute list': gce.list(),
     'compute create': gce.create({
         name: 'web', 'machine-type': 'e2-micro', image: 'debian-12', 'disk-size': 20, 'startup-script': 'echo hi',
-        'public-ip': false, labels: ['env=dev'], wait: true,
+        'public-ip': false, labels: ['env=dev'], zone: 'us-central1-b', wait: true,
     }),
     'compute update': gce.update('web', 'us-central1-a', {
         'machine-type': 'e2-small', restart: true, labels: ['env=prod'], 'remove-labels': ['old'], 'deletion-protection': false,

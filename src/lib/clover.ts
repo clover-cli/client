@@ -249,7 +249,7 @@ export const gce = {
     list: (): Cmd => ['gcp', 'compute', 'list'],
     create: (o: {
         name?: string; 'machine-type'?: string; image?: string; 'disk-size'?: number; 'startup-script'?: string;
-        'public-ip'?: boolean; labels?: string[]; wait?: boolean;
+        'public-ip'?: boolean; labels?: string[]; zone?: string; wait?: boolean;
     }): Cmd => ['gcp', 'compute', 'create', ...flags(o)],
     update: (name: string, zone: string, o: {
         'machine-type'?: string; restart?: boolean; labels?: string[]; 'remove-labels'?: string[]; 'deletion-protection'?: boolean;
