@@ -68,7 +68,7 @@ export function ActionModal({ title, cmd, submitLabel, onClose, onDone, children
             </form>
             <CommandPreview cmd={cmd} />
             {busy && cmd.includes('--wait') && (
-                <p className="muted small">Waiting for AWS to finish. This can take several minutes; progress is in Activity.</p>
+                <p className="muted small">Waiting for the operation to finish. This can take several minutes; progress is in Activity.</p>
             )}
             <ErrorBox error={error} />
         </Modal>
