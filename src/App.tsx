@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { CliActivity, CliInfo, Session } from '../shared/types';
 import { Button, Spinner } from './components/ui';
-import { REGIONS } from './lib/clover';
+import { projects, REGIONS, type Project } from './lib/clover';
+import { useCli } from './lib/hooks';
 import Activity from './pages/Activity';
 import Compute from './pages/Compute';
 import Connect from './pages/Connect';
@@ -9,15 +10,17 @@ import Databases from './pages/Databases';
 import Functions from './pages/Functions';
 import Overview from './pages/Overview';
 import Permissions from './pages/Permissions';
+import Projects from './pages/Projects';
 import Storage from './pages/Storage';
 import Tables from './pages/Tables';
-import { Archive, Database, House, Key, Leaf, LogOut, Server, Table, Terminal, Zap, type LucideIcon } from 'lucide-react';
+import { Archive, Database, FolderKanban, House, Key, Leaf, LogOut, Server, Table, Terminal, Zap, type LucideIcon } from 'lucide-react';
 
-export type Page = 'overview' | 'tables' | 'storage' | 'functions' | 'databases' | 'compute' | 'permissions' | 'activity';
+export type Page = 'overview' | 'projects' | 'tables' | 'storage' | 'functions' | 'databases' | 'compute' | 'permissions' | 'activity';
 
 /** `aws` / `gcp`: the service behind the page on that provider. Pages without one for the session's provider are hidden. */
 const NAV: { page: Page; label: string; icon: LucideIcon; aws?: string; gcp?: string }[] = [
     { page: 'overview', label: 'Overview', icon: House },
+    { page: 'projects', label: 'Projects', icon: FolderKanban, aws: 'Tags' },
     { page: 'tables', label: 'Table Editor', icon: Table, aws: 'DynamoDB', gcp: 'Firestore' },
     { page: 'storage', label: 'Storage', icon: Archive, aws: 'S3', gcp: 'Cloud Storage' },
     { page: 'functions', label: 'Functions', icon: Zap, aws: 'Lambda', gcp: 'Cloud Functions' },
@@ -32,6 +35,7 @@ export default function App() {
     const [activity, setActivity] = useState<CliActivity[]>([]);
     const [regionBusy, setRegionBusy] = useState(false);
     const [regionError, setRegionError] = useState<string>();
+    const projectList = useCli<Project[]>(session?.connected && session.provider !== 'gcp' ? projects.list() : null);
 
     useEffect(() => {
         void window.clover.session.get().then(setSession);
@@ -133,6 +137,7 @@ export default function App() {
                 {/* Remount the page when the region changes so everything is listed again. */}
                 <main className="content" key={identity.region}>
                     {page === 'overview' && <Overview session={session} cli={cli} onNavigate={setPage} />}
+                    {page === 'projects' && <Projects onChange={projectList.reload} />}
                     {page === 'tables' && <Tables gcp={provider === 'gcp'} />}
                     {page === 'storage' && <Storage gcp={provider === 'gcp'} />}
                     {page === 'functions' && <Functions gcp={provider === 'gcp'} />}

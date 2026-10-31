@@ -91,6 +91,17 @@ export interface LambdaFunction {
 }
 export interface InvokeResult { statusCode?: number; error?: string; payload: unknown; logs?: string }
 
+/** What `clover project list` prints. Projects are kept locally and shared with the CLI in the terminal. */
+export interface Project { name: string; created: string; current: boolean }
+/** A resource tagged clover:project=<name>, from `clover project get --output json`. */
+export interface ProjectResource { service: string; id: string; arn: string }
+/** What `clover project overview` prints: totals per service, and per project (with a count per service). */
+export interface ProjectOverview {
+    region: string; total: number;
+    services: { service: string; count: number; error?: string }[];
+    projects: ({ project: string; total: number } & Record<string, number | string>)[];
+}
+
 export interface AttachedPolicy { name: string; type: 'aws-managed' | 'customer-managed' | 'inline'; via: string; arn?: string }
 /** What `clover aws|gcp iam check` prints: IAM actions on AWS, permissions on GCP. */
 export interface CommandCheck { service: string; command: string; allowed: boolean; actions?: string[]; permissions?: string[]; missing: string[] }
@@ -267,6 +278,17 @@ export const gce = {
 export const iam = {
     policies: (): Cmd => ['aws', 'iam', 'policies'],
     check: (): Cmd => ['aws', 'iam', 'check'],
+};
+
+/** clover project: AWS only. The current project filters every `clover aws` list and tags what's created. */
+export const projects = {
+    list: (): Cmd => ['project', 'list'],
+    get: (name: string): Cmd => ['project', 'get', name],
+    create: (name: string): Cmd => ['project', 'create', name],
+    delete: (name: string): Cmd => ['project', 'delete', name, YES],
+    use: (name: string | null): Cmd => name ? ['project', 'use', name] : ['project', 'use', '--none'],
+    add: (name: string, arns: string[]): Cmd => ['project', 'add', ...arns, '--project', name],
+    overview: (): Cmd => ['project', 'overview'],
 };
 
 export const gcpIam = {
