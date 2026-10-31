@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ec2, type Cmd } from '../src/lib/clover';
+import { ec2, rds, type Cmd } from '../src/lib/clover';
 
 // The real CLI: the @clover-cli/cli dependency (build it first), not a CLOVER_CLI override.
 vi.stubEnv('CLOVER_CLI', undefined);
@@ -13,6 +13,10 @@ const { runCli } = await import('../electron/cli');
 const COMMANDS: Record<string, Cmd> = {
     'ec2 update': ec2.update('i-123', {
         'instance-type': 't3.small', restart: true, name: 'web', tags: ['env=prod'], 'remove-tags': ['old'], 'termination-protection': false,
+    }),
+    'rds update': rds.update('db', {
+        'instance-class': 'db.t3.small', storage: 40, password: 'pw', 'backup-retention': 7, 'multi-az': true, public: false,
+        'deletion-protection': true, 'apply-immediately': true, tags: ['env=prod'], wait: true,
     }),
 };
 

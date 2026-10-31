@@ -180,6 +180,10 @@ export const rds = {
         password?: string; database?: string; public?: boolean; 'multi-az'?: boolean; 'backup-retention'?: number;
         'deletion-protection'?: boolean; tags?: string[]; wait?: boolean;
     }): Cmd => ['aws', 'rds', 'create', id, ...flags(o)],
+    update: (id: string, o: {
+        'instance-class'?: string; storage?: number; password?: string; 'backup-retention'?: number; 'multi-az'?: boolean;
+        public?: boolean; 'deletion-protection'?: boolean; 'apply-immediately'?: boolean; tags?: string[]; wait?: boolean;
+    }): Cmd => ['aws', 'rds', 'update', id, ...flags(o)],
     start: (id: string): Cmd => ['aws', 'rds', 'start', id],
     stop: (id: string): Cmd => ['aws', 'rds', 'stop', id],
     reboot: (id: string): Cmd => ['aws', 'rds', 'reboot', id],

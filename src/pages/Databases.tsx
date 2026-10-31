@@ -117,6 +117,65 @@ function CreateCloudSql({ onClose, onDone }: { onClose: () => void; onDone: () =
     );
 }
 
+/** clover aws rds update: only what's changed is sent. */
+function EditRds({ db, onClose, onDone }: { db: Database; onClose: () => void; onDone: () => void }) {
+    const [cls, setCls] = useState(db.class ?? '');
+    const [storage, setStorage] = useState(String(db.storageGb ?? ''));
+    const [password, setPassword] = useState('');
+    const [backups, setBackups] = useState('');
+    const [multiAz, setMultiAz] = useState(!!db.multiAz);
+    const [isPublic, setPublic] = useState(!!db.public);
+    const [protect, setProtect] = useState(!!db.deletionProtection);
+    const [tags, setTags] = useState('');
+    const [now, setNow] = useState(true);
+    const [wait, setWait] = useState(false);
+
+    const changed = {
+        'instance-class': cls !== db.class ? cls : undefined,
+        storage: Number(storage) && Number(storage) !== db.storageGb ? Number(storage) : undefined,
+        password: password || undefined,
+        'backup-retention': backups === '' ? undefined : Number(backups),
+        'multi-az': multiAz !== !!db.multiAz ? multiAz : undefined,
+        public: isPublic !== !!db.public ? isPublic : undefined,
+        'deletion-protection': protect !== !!db.deletionProtection ? protect : undefined,
+        tags: lines(tags),
+    };
+    const valid = Object.values(changed).some((v) => Array.isArray(v) ? v.length : v !== undefined)
+        && !(Number(storage) < (db.storageGb ?? 0));
+    return (
+        <ActionModal wide title={`Edit ${db.id}`} submitLabel="Save" valid={valid} onClose={onClose} onDone={onDone}
+            cmd={rds.update(db.id, { ...changed, 'apply-immediately': now || undefined, wait: wait || undefined })}>
+            <div className="field-row">
+                <Field label="Instance class">
+                    <select value={cls} onChange={(e) => setCls(e.target.value)}>
+                        {[...new Set([db.class ?? '', ...CLASSES])].filter(Boolean).map((x) => <option key={x}>{x}</option>)}
+                    </select>
+                </Field>
+                <Field label="Storage (GiB)" hint="Can only grow">
+                    <input type="number" min={db.storageGb} value={storage} onChange={(e) => setStorage(e.target.value)} />
+                </Field>
+            </div>
+            <div className="field-row">
+                <Field label="New master password (optional)">
+                    <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                </Field>
+                <Field label="Backup retention (days, optional)">
+                    <input type="number" min={0} value={backups} onChange={(e) => setBackups(e.target.value)} placeholder="unchanged" />
+                </Field>
+            </div>
+            <Field label="Set tags (optional)" hint="One Key=Value per line">
+                <textarea rows={2} value={tags} onChange={(e) => setTags(e.target.value)} placeholder="env=prod" spellCheck={false} />
+            </Field>
+            <Check label="Multi-AZ" hint="A standby copy in another zone, for failover" checked={multiAz} onChange={setMultiAz} />
+            <Check label="Publicly accessible" checked={isPublic} onChange={setPublic} />
+            <Check label="Deletion protection" checked={protect} onChange={setProtect} />
+            <Check label="Apply now" hint="Otherwise AWS applies it in the next maintenance window" checked={now} onChange={setNow} />
+            <Check label="Wait until done" checked={wait} onChange={setWait} />
+            {password && <p className="muted small">The password is passed to the CLI as an argument, as it would be in a terminal.</p>}
+        </ActionModal>
+    );
+}
+
 /** clover gcp sql update: only what's changed is sent. */
 function EditCloudSql({ db, onClose, onDone }: { db: Database; onClose: () => void; onDone: () => void }) {
     const [tier, setTier] = useState(db.tier ?? '');
@@ -219,7 +278,7 @@ export default function Databases({ gcp }: { gcp: boolean }) {
                             ? <Button variant="ghost" icon={Play} title="Start" onClick={() => setPower({ action: 'start', id: d.id })} />
                             : <Button variant="ghost" icon={Square} title="Stop" onClick={() => setPower({ action: 'stop', id: d.id })} />}
                         <Button variant="ghost" icon={RefreshCw} title="Reboot" onClick={() => setPower({ action: 'reboot', id: d.id })} />
-                        {gcp && <Button variant="ghost" icon={Pencil} title="Edit" onClick={() => setEditing(d)} />}
+                        <Button variant="ghost" icon={Pencil} title="Edit" onClick={() => setEditing(d)} />
                         <Button variant="ghost" icon={Trash2} title="Delete" onClick={() => { setSnapshot(''); setForce(false); setDeleting(d); }} />
                     </span>
                 )} />
@@ -228,7 +287,9 @@ export default function Databases({ gcp }: { gcp: boolean }) {
             {creating && (gcp
                 ? <CreateCloudSql onClose={() => setCreating(false)} onDone={dbs.reload} />
                 : <CreateDatabase onClose={() => setCreating(false)} onDone={dbs.reload} />)}
-            {editing && <EditCloudSql db={editing} onClose={() => setEditing(undefined)} onDone={dbs.reload} />}
+            {editing && (gcp
+                ? <EditCloudSql db={editing} onClose={() => setEditing(undefined)} onDone={dbs.reload} />
+                : <EditRds db={editing} onClose={() => setEditing(undefined)} onDone={dbs.reload} />)}
             {details && <Details gcp={gcp} id={details} onClose={() => setDetails(undefined)} />}
             {power && (
                 <ActionModal title={`${power.action[0].toUpperCase()}${power.action.slice(1)} ${power.id}`} submitLabel={power.action[0].toUpperCase() + power.action.slice(1)}
